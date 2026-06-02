@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supervisión Calidad Cosecha — Palma Grande</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3B6D11">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --g50:#EAF3DE;--g400:#639922;--g600:#3B6D11;--g800:#27500A;
+  --b50:#E6F1FB;--b600:#185FA5;
+  --a50:#FAEEDA;--a400:#EF9F27;--a600:#854F0B;
+  --r50:#FCEBEB;--r400:#E24B4A;--r600:#A32D2D;
+  --p50:#EEEDFE;--p400:#7F77DD;--p600:#534AB7;
+  --bg:#fff;--bg2:#f7f7f5;--bg3:#f0efe9;
+  --tx:#1a1a18;--tx2:#6b6b67;--tx3:#9b9b97;
+  --bd:rgba(0,0,0,0.11);--bd2:rgba(0,0,0,0.2);
+  --rr:8px;--rrl:12px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;
+  --tx:#f0efe9;--tx2:#a0a09a;--tx3:#686864;
+  --bd:rgba(255,255,255,0.09);--bd2:rgba(255,255,255,0.18);
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);min-height:100vh;padding:1.25rem;color:var(--tx);}
+.app{max-width:820px;margin:0 auto;}
+/* Header */
+.hdr{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;}
+.hdr-icon{width:44px;height:44px;border-radius:var(--rr);background:var(--g50);display:flex;align-items:center;justify-content:center;}
+.hdr-icon i{font-size:22px;color:var(--g600);}
+.hdr h1{font-size:17px;font-weight:600;color:var(--tx);}
+.hdr p{font-size:12px;color:var(--tx2);margin-top:2px;}
+/* Tabs */
+.tabs{display:flex;gap:2px;margin-bottom:1.25rem;background:var(--bg2);border-radius:var(--rr);padding:4px;border:.5px solid var(--bd);}
+.tab{flex:1;padding:7px 8px;font-size:12px;cursor:pointer;border:none;background:none;color:var(--tx2);border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .15s;}
+.tab.active{background:var(--bg);color:var(--g600);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.tab:hover:not(.active){color:var(--tx);background:var(--bg3);}
+.sec{display:none;}.sec.active{display:block;}
+/* Cards / Forms */
+.card{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);padding:1.25rem;margin-bottom:.875rem;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;}
+.fg select,.fg input{padding:8px 10px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx);font-size:13px;outline:none;transition:border-color .15s;width:100%;}
+.fg select:focus,.fg input:focus{border-color:var(--g400);}
+.stitle{font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;margin:1.1rem 0 .6rem;display:flex;align-items:center;gap:6px;}
+/* Ciclo banner */
+.ciclo-banner{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--rr);font-size:13px;margin-top:8px;}
+.ciclo-ok{background:var(--g50);color:var(--g600);border:.5px solid var(--g400);}
+.ciclo-warn{background:var(--r50);color:var(--r600);border:.5px solid var(--r400);}
+/* Racimos */
+.racimos-card{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);padding:1.1rem;margin-bottom:.875rem;}
+.racimos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem;}
+.rg{display:flex;flex-direction:column;gap:6px;}
+.rlabel{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:6px 8px;border-radius:var(--rr);}
+.rl-m{background:var(--g50);color:var(--g600);}
+.rl-s{background:var(--a50);color:var(--a600);}
+.rl-v{background:var(--p50);color:var(--p600);}
+.rl-p{background:var(--r50);color:var(--r600);}
+.rinput{text-align:center;font-size:20px;font-weight:700;padding:10px 6px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx);outline:none;width:100%;}
+.rinput:focus{border-color:var(--g400);}
+.tot-row{display:flex;gap:10px;margin-bottom:10px;}
+.tot-box{flex:1;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--rr);background:var(--bg2);border:.5px solid var(--bd);}
+.tot-box.ok{background:var(--g50);border-color:var(--g400);}
+.tot-lbl{font-size:12px;color:var(--tx2);}
+.tot-val{font-size:20px;font-weight:700;color:var(--tx);}
+.tot-box.ok .tot-val{color:var(--g600);}
+.verde-box{flex:1;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--rr);border:.5px solid var(--bd2);transition:all .3s;}
+.verde-ok{background:var(--g50);border-color:var(--g400);}
+.verde-warn{background:var(--r50);border-color:var(--r400);}
+.verde-lbl{font-size:12px;}
+.verde-pct{font-size:20px;font-weight:700;}
+.verde-ok .verde-pct,.verde-ok .verde-lbl{color:var(--g600);}
+.verde-warn .verde-pct,.verde-warn .verde-lbl{color:var(--r600);}
+.mad-barra{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:1px;}
+.mad-seg{height:100%;transition:width .4s;}
+.seg-m{background:var(--g400);}.seg-s{background:var(--a400);}.seg-v{background:var(--p400);}.seg-p{background:var(--r400);}
+/* Calificación cosechero */
+.cal-card{border-radius:var(--rrl);padding:1rem 1.25rem;margin-bottom:.875rem;border:.5px solid var(--bd2);}
+.cal-a{background:var(--g50);border-color:var(--g400);}
+.cal-b{background:var(--a50);border-color:var(--a400);}
+.cal-c{background:var(--r50);border-color:var(--r400);}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.cal-titulo{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.cal-nota{font-size:26px;font-weight:700;}
+.cal-a .cal-titulo,.cal-a .cal-nota{color:var(--g600);}
+.cal-b .cal-titulo,.cal-b .cal-nota{color:var(--a600);}
+.cal-c .cal-titulo,.cal-c .cal-nota{color:var(--r600);}
+.cal-desc{font-size:12px;margin-top:2px;}
+.cal-a .cal-desc{color:var(--g600);}
+.cal-b .cal-desc{color:var(--a600);}
+.cal-c .cal-desc{color:var(--r600);}
+/* Criterios */
+.crow{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--rr);margin-bottom:6px;}
+.cnombre{flex:1;font-size:13px;color:var(--tx);}
+.cpuntaje{display:flex;gap:4px;}
+.pb{width:28px;height:28px;border-radius:50%;border:.5px solid var(--bd2);background:var(--bg);color:var(--tx2);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.pb:hover{border-color:var(--g400);color:var(--g600);}
+.pb.sel{background:var(--g400);color:#fff;border-color:var(--g400);}
+.bdg{font-size:11px;padding:2px 7px;border-radius:20px;font-weight:600;min-width:32px;text-align:center;}
+.bok{background:var(--g50);color:var(--g600);}
+.bwn{background:var(--a50);color:var(--a600);}
+.bbd{background:var(--r50);color:var(--r600);}
+/* Obs / Save */
+.obs{width:100%;padding:8px 10px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx);font-size:13px;resize:none;height:60px;font-family:inherit;outline:none;}
+.bsave{width:100%;padding:11px;background:var(--g600);color:#fff;border:none;border-radius:var(--rr);font-size:14px;font-weight:500;cursor:pointer;margin-top:.875rem;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s;}
+.bsave:hover{background:var(--g800);}
+/* Alertas meta */
+.alert-banner{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:var(--rr);font-size:12px;margin-bottom:6px;}
+.alert-warn{background:var(--a50);color:var(--a600);border:.5px solid var(--a400);}
+.alert-ok{background:var(--g50);color:var(--g600);border:.5px solid var(--g400);}
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem;}
+.mcard{background:var(--bg2);border-radius:var(--rr);padding:.875rem;border:.5px solid var(--bd);}
+.mlbl{font-size:11px;color:var(--tx2);margin-bottom:3px;}
+.mval{font-size:22px;font-weight:600;color:var(--tx);}
+.msub{font-size:11px;color:var(--tx3);margin-top:1px;}
+/* Sup cards */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem;}
+.scard{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);padding:1.1rem;}
+.shdr{display:flex;align-items:center;gap:10px;margin-bottom:.875rem;padding-bottom:.875rem;border-bottom:.5px solid var(--bd);}
+.av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.av1{background:var(--g50);color:var(--g600);}
+.av2{background:var(--b50);color:var(--b600);}
+.sname{font-size:13px;font-weight:600;color:var(--tx);}
+.smeta{font-size:12px;color:var(--tx2);}
+.brow{margin-bottom:8px;}
+.blbl{display:flex;justify-content:space-between;font-size:12px;color:var(--tx2);margin-bottom:3px;}
+.btrack{height:5px;background:var(--bg2);border-radius:3px;overflow:hidden;}
+.bfill{height:100%;border-radius:3px;transition:width .4s;}
+.fg-{background:var(--g400);}.fa-{background:var(--a400);}.fr-{background:var(--r400);}
+.mad-dist{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:.5rem;}
+.mad-pill{border-radius:var(--rr);padding:6px 4px;text-align:center;font-size:10px;font-weight:600;}
+.mp-m{background:var(--g50);color:var(--g600);}
+.mp-s{background:var(--a50);color:var(--a600);}
+.mp-v{background:var(--p50);color:var(--p600);}
+.mp-p{background:var(--r50);color:var(--r600);}
+.mad-pct{font-size:15px;font-weight:700;display:block;}
+/* Progreso */
+.prog-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.prog-lbl{font-size:12px;color:var(--tx2);}
+.prog-track{height:7px;background:var(--bg2);border-radius:4px;overflow:hidden;border:.5px solid var(--bd);}
+.prog-fill{height:100%;border-radius:4px;transition:width .4s;background:var(--a400);}
+.prog-fill.done{background:var(--g400);}
+/* Historial */
+.htbl{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);overflow:hidden;}
+.hhdr{display:grid;grid-template-columns:1.1fr 1.2fr 1.1fr 1.8fr 0.8fr 0.7fr 0.8fr;gap:5px;padding:9px 12px;background:var(--bg2);font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--bd);}
+.hrow{display:grid;grid-template-columns:1.1fr 1.2fr 1.1fr 1.8fr 0.8fr 0.7fr 0.8fr;gap:5px;padding:9px 12px;border-top:.5px solid var(--bd);align-items:center;font-size:11px;}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;}
+.mini-pills{display:flex;flex-wrap:wrap;gap:2px;}
+.mini-pill{font-size:10px;padding:1px 5px;border-radius:10px;font-weight:600;}
+.mpm{background:var(--g50);color:var(--g600);}
+.mps{background:var(--a50);color:var(--a600);}
+.mpv{background:var(--p50);color:var(--p600);}
+.mpp{background:var(--r50);color:var(--r600);}
+.tag{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600;display:inline-block;}
+.tag-ok{background:var(--g50);color:var(--g600);}
+.tag-warn{background:var(--a50);color:var(--a600);}
+.tag-bad{background:var(--r50);color:var(--r600);}
+/* Comparativa */
+.cwrap{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);padding:1.25rem;}
+.cleg{display:flex;gap:16px;margin-bottom:1rem;}
+.cli{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);}
+.cld{width:10px;height:10px;border-radius:2px;}
+.comp-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.clbl{font-size:12px;color:var(--tx2);width:140px;flex-shrink:0;}
+.cbars{flex:1;display:flex;flex-direction:column;gap:3px;}
+.cbline{display:flex;align-items:center;gap:6px;}
+.cbar{height:6px;border-radius:3px;transition:width .5s;min-width:0;}
+.cval{font-size:11px;font-weight:600;min-width:32px;}
+/* Toast / sync */
+.empty{text-align:center;padding:2rem 1rem;color:var(--tx3);font-size:13px;}
+.empty i{font-size:26px;display:block;margin-bottom:8px;}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--g600);color:#fff;padding:10px 16px;border-radius:var(--rr);font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;display:flex;align-items:center;gap:6px;}
+.toast.show{opacity:1;}
+.sync-banner{display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--b600);color:#fff;padding:8px 16px;border-radius:var(--rr);font-size:12px;font-weight:500;z-index:1000;align-items:center;gap:6px;}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes fadeout{0%{opacity:1}80%{opacity:1}100%{opacity:0}}
+.online-bar-show{display:flex!important;animation:fadeout 3s forwards;}
+/* Personal */
+.personal-sup-block{margin-bottom:1.25rem;}
+.personal-sup-hdr{display:flex;align-items:center;gap:10px;padding:.75rem 1rem;background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl) var(--rrl) 0 0;border-bottom:none;}
+.personal-table{background:var(--bg);border:.5px solid var(--bd);border-radius:0 0 var(--rrl) var(--rrl);overflow:hidden;}
+.personal-hdr{display:grid;grid-template-columns:0.8fr 1.8fr 1fr 0.8fr;gap:8px;padding:8px 14px;background:var(--bg2);font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--bd);}
+.personal-row{display:grid;grid-template-columns:0.8fr 1.8fr 1fr 0.8fr;gap:8px;padding:10px 14px;border-top:.5px solid var(--bd);align-items:center;font-size:13px;}
+.personal-row.inactivo{opacity:.45;}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;}
+.dot-activo{background:var(--g400);}
+.dot-inactivo{background:var(--tx3);}
+.personal-actions{display:flex;gap:6px;}
+.btn-sm{padding:4px 10px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx2);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:3px;transition:all .12s;}
+.btn-sm:hover{background:var(--bg3);color:var(--tx);}
+.btn-edit{border-color:var(--b600);color:var(--b600);}
+.btn-edit:hover{background:var(--b50);}
+.btn-toggle-off{border-color:var(--r400);color:var(--r600);}
+.btn-toggle-off:hover{background:var(--r50);}
+.btn-toggle-on{border-color:var(--g400);color:var(--g600);}
+.btn-toggle-on:hover{background:var(--g50);}
+</style>
+</head>
+<body>
+<div class="sync-banner" id="sync-banner">
+  <i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i> Sincronizando...
+</div>
+<div class="toast" id="toast"><i class="ti ti-circle-check"></i> Evaluación guardada</div>
+
+<!-- Barra estado conexión -->
+<div id="offline-bar" style="display:none;position:fixed;top:0;left:0;right:0;background:#854F0B;color:#fff;padding:7px 16px;font-size:12px;font-weight:500;z-index:2000;display:none;align-items:center;gap:8px;justify-content:space-between;">
+  <span><i class="ti ti-wifi-off" style="vertical-align:-2px;margin-right:4px"></i>Sin conexión — las evaluaciones se guardan localmente</span>
+  <span id="offline-pending" style="background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;"></span>
+</div>
+<div id="online-bar" style="display:none;position:fixed;top:0;left:0;right:0;background:#3B6D11;color:#fff;padding:7px 16px;font-size:12px;font-weight:500;z-index:2000;align-items:center;gap:8px;">
+  <i class="ti ti-wifi" style="vertical-align:-2px;margin-right:4px"></i>Conexión restaurada — sincronizando evaluaciones pendientes...
+</div>
+
+<div class="app">
+  <div class="hdr">
+    <div class="hdr-icon"><i class="ti ti-plant-2"></i></div>
+    <div>
+      <h1>Supervisión de calidad — cosecha</h1>
+      <p>Juan Carlos Oviedo &nbsp;·&nbsp; Brayan Pérez</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('registro',this)"><i class="ti ti-clipboard-list"></i> Registro</button>
+    <button class="tab" onclick="showTab('dashboard',this)"><i class="ti ti-chart-bar"></i> Dashboard</button>
+    <button class="tab" onclick="showTab('comparativa',this)"><i class="ti ti-arrows-diff"></i> Comparativa</button>
+    <button class="tab" onclick="showTab('historial',this)"><i class="ti ti-list"></i> Historial</button>
+    <button class="tab" onclick="showTab('personal',this)"><i class="ti ti-users"></i> Personal</button>
+  </div>
+
+  <!-- ══ REGISTRO ══ -->
+  <div class="sec active" id="sec-registro">
+
+    <div id="prog-sup-wrap"></div>
+
+    <!-- 1. Supervisor + Cosechero -->
+    <div class="card">
+      <div class="frow">
+        <div class="fg">
+          <label>Supervisor</label>
+          <select id="sel-sup" onchange="onSupChange()">
+            <option value="">Seleccionar...</option>
+            <option value="0">Juan Carlos Oviedo</option>
+            <option value="1">Brayan Pérez</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Cosechero</label>
+          <select id="sel-cosech" disabled>
+            <option value="">— elige supervisor primero —</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label>Finca</label>
+          <select id="sel-finca" onchange="onFincaChange()">
+            <option value="">Seleccionar...</option>
+            <option value="1">Finca 1</option>
+            <option value="2">Finca 2</option>
+            <option value="3">Finca 3</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Lote</label>
+          <select id="sel-lote" disabled onchange="onLoteChange()">
+            <option value="">— elige finca primero —</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow" id="lote-info-row" style="display:none;">
+        <div class="fg">
+          <label>Material</label>
+          <input type="text" id="inp-material" readonly style="background:var(--bg2);color:var(--tx2);">
+        </div>
+        <div class="fg">
+          <label>Tipo de palma</label>
+          <input type="text" id="inp-tipo-display" readonly style="background:var(--bg2);color:var(--tx2);">
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label>Días desde última cosecha</label>
+          <input type="number" id="inp-dias" min="0" max="60" placeholder="Ej: 10" oninput="calcCiclo()">
+        </div>
+        <div class="fg">
+          <label>Fecha evaluación</label>
+          <input type="date" id="inp-fecha" onchange="renderProgSup()">
+        </div>
+      </div>
+      <div id="ciclo-banner" style="display:none;" class="ciclo-banner ciclo-ok">
+        <i class="ti ti-calendar-clock" style="font-size:18px;flex-shrink:0"></i>
+        <span id="ciclo-txt"></span>
+      </div>
+    </div>
+
+    <!-- 2. Racimos por madurez -->
+    <div class="stitle"><i class="ti ti-stack"></i> Racimos evaluados por madurez</div>
+    <div class="racimos-card">
+      <div class="racimos-grid">
+        <div class="rg">
+          <div class="rlabel rl-m"><i class="ti ti-circle-check" style="font-size:14px"></i>Maduro</div>
+          <input type="number" class="rinput" id="r-maduro" min="0" value="0" oninput="actualizarRacimos()">
+        </div>
+        <div class="rg">
+          <div class="rlabel rl-s"><i class="ti ti-alert-triangle" style="font-size:14px"></i>Sobremaduro</div>
+          <input type="number" class="rinput" id="r-sobremaduro" min="0" value="0" oninput="actualizarRacimos()">
+        </div>
+        <div class="rg">
+          <div class="rlabel rl-v"><i class="ti ti-leaf" style="font-size:14px"></i>Verde</div>
+          <input type="number" class="rinput" id="r-verde" min="0" value="0" oninput="actualizarRacimos()">
+        </div>
+        <div class="rg">
+          <div class="rlabel rl-p"><i class="ti ti-x" style="font-size:14px"></i>Podrido</div>
+          <input type="number" class="rinput" id="r-podrido" min="0" value="0" oninput="actualizarRacimos()">
+        </div>
+      </div>
+      <div class="tot-row">
+        <div class="tot-box" id="tot-box">
+          <span class="tot-lbl"><i class="ti ti-sum" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Total racimos</span>
+          <span class="tot-val" id="tot-val">0</span>
+        </div>
+        <div class="verde-box" id="verde-box">
+          <span class="verde-lbl" id="verde-lbl">% Verdes</span>
+          <span class="verde-pct" id="verde-pct">—</span>
+        </div>
+      </div>
+      <div class="mad-barra" id="mad-barra" style="display:none;">
+        <div class="mad-seg seg-m" id="seg-m" style="width:0%"></div>
+        <div class="mad-seg seg-s" id="seg-s" style="width:0%"></div>
+        <div class="mad-seg seg-v" id="seg-v" style="width:0%"></div>
+        <div class="mad-seg seg-p" id="seg-p" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- 3. Calificación cosechero (aparece tras ingresar racimos) -->
+    <div id="cal-cosechero" style="display:none;">
+      <div class="stitle"><i class="ti ti-user-check"></i> Calificación del cosechero</div>
+      <div class="cal-card cal-b" id="cal-card">
+        <div class="cal-header">
+          <span class="cal-titulo" id="cal-titulo">—</span>
+          <span class="cal-nota" id="cal-nota">—</span>
+        </div>
+        <div class="cal-desc" id="cal-desc">—</div>
+      </div>
+    </div>
+
+    <!-- 4. Parámetros de calidad del trabajo -->
+    <div class="card">
+      <div class="stitle" style="margin:0 0 .75rem;"><i class="ti ti-checklist"></i> Parámetros de calidad del trabajo</div>
+      <p style="font-size:12px;color:var(--tx2);margin-bottom:10px;">1 = Muy deficiente &nbsp;·&nbsp; 2 = Deficiente &nbsp;·&nbsp; 3 = Aceptable &nbsp;·&nbsp; 4 = Bueno &nbsp;·&nbsp; 5 = Excelente</p>
+      <div id="crit-grid"></div>
+    </div>
+
+    <!-- 5. Observaciones + Guardar -->
+    <div class="stitle"><i class="ti ti-note"></i> Observaciones</div>
+    <textarea class="obs" id="inp-obs" placeholder="Novedades, incidencias o recomendaciones..."></textarea>
+    <button class="bsave" onclick="guardar()"><i class="ti ti-device-floppy"></i> Guardar evaluación</button>
+  </div>
+
+  <!-- ══ DASHBOARD ══ -->
+  <div class="sec" id="sec-dashboard">
+    <div class="metrics">
+      <div class="mcard"><div class="mlbl">Evaluaciones hoy</div><div class="mval" id="m-hoy">0</div><div class="msub">mín. 4/sup.</div></div>
+      <div class="mcard"><div class="mlbl">Total general</div><div class="mval" id="m-tot">0</div><div class="msub">registradas</div></div>
+      <div class="mcard"><div class="mlbl">Racimos hoy</div><div class="mval" id="m-rac">0</div><div class="msub">evaluados</div></div>
+      <div class="mcard"><div class="mlbl">% Verde global</div><div class="mval" id="m-verde">—</div><div class="msub">límite 3%</div></div>
+    </div>
+    <div class="card" style="padding:1rem 1.25rem;margin-bottom:1rem;">
+      <div class="stitle" style="margin:0 0 .75rem;"><i class="ti ti-target"></i> Meta diaria — mínimo 4 evaluaciones por supervisor</div>
+      <div id="prog-dashboard"></div>
+    </div>
+    <div class="sgrid" id="sgrid">
+      <div class="scard"><div class="empty"><i class="ti ti-clipboard"></i>Sin evaluaciones aún</div></div>
+      <div class="scard"><div class="empty"><i class="ti ti-clipboard"></i>Sin evaluaciones aún</div></div>
+    </div>
+  </div>
+
+  <!-- ══ COMPARATIVA ══ -->
+  <div class="sec" id="sec-comparativa">
+    <div class="cwrap" id="cwrap">
+      <div class="empty"><i class="ti ti-arrows-diff"></i>Registra evaluaciones para ver la comparativa</div>
+    </div>
+  </div>
+
+  <!-- ══ HISTORIAL ══ -->
+  <div class="sec" id="sec-historial">
+    <div class="htbl">
+      <div class="hhdr">
+        <span>Cosechero</span><span>Supervisor</span><span>Lote · Palma · Ciclo</span>
+        <span>Racimos por madurez</span><span>Total</span><span>% Verde</span><span>Calif.</span>
+      </div>
+      <div id="hbody"><div class="empty">Sin evaluaciones registradas</div></div>
+    </div>
+  </div>
+
+  <!-- ══ PERSONAL ══ -->
+  <div class="sec" id="sec-personal">
+
+    <!-- Instrucción Sheet -->
+    <div class="card" style="display:flex;align-items:flex-start;gap:12px;background:var(--b50);border-color:var(--b600);">
+      <i class="ti ti-table" style="font-size:22px;color:var(--b600);flex-shrink:0;margin-top:2px;"></i>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--b600);margin-bottom:4px;">Gestión de cosecheros en Google Sheets</div>
+        <div style="font-size:12px;color:var(--b600);line-height:1.6;">Para <strong>agregar</strong> un cosechero nuevo, ve al Google Sheet y agrégalo en la hoja <strong>"Personal"</strong> con las columnas: Código · Nombre · Supervisor · SupIdx (0=Juan Carlos, 1=Brayan) · Activo (TRUE/FALSE).<br>Desde aquí puedes <strong>activar o inactivar</strong> directamente.</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:.75rem;">
+      <button onclick="cargarDesdeGAS()" style="padding:7px 14px;background:var(--bg);border:.5px solid var(--bd2);border-radius:var(--rr);font-size:12px;color:var(--tx2);cursor:pointer;display:flex;align-items:center;gap:5px;">
+        <i class="ti ti-refresh"></i> Recargar desde Sheet
+      </button>
+    </div>
+
+    <!-- Listado por supervisor -->
+    <div id="personal-list"></div>
+  </div>
+
+</div><!-- /.app -->
+
+<script>
+// ══ CONFIGURACIÓN ════════════════════════════════════════════════════════════
+const GAS_URL = 'TU_URL_GAS_AQUI'; // Pegar URL tras desplegar Apps Script
+
+// ══ DATOS ════════════════════════════════════════════════════════════════════
+const PERSONAL = [
+  // Juan Carlos Oviedo
+  [{cod:'C001',n:'Pedro Ramírez'},{cod:'C002',n:'Luis Cárdenas'},{cod:'C003',n:'Miguel Torres'},
+   {cod:'C004',n:'Andrés Salcedo'},{cod:'C005',n:'Jorge Patiño'}],
+  // Brayan Pérez
+  [{cod:'C006',n:'Carlos Ruiz'},{cod:'C007',n:'Héctor Mora'},{cod:'C008',n:'Fabio Quintero'},
+   {cod:'C009',n:'Edwin Castro'},{cod:'C010',n:'Nelson Vega'}]
+];
+const SUPS        = ['Juan Carlos Oviedo','Brayan Pérez'];
+const INI         = {'Juan Carlos Oviedo':'JO','Brayan Pérez':'BP'};
+const CICLO_MAX   = {guineensis:13, hibrido:22};
+const LOTES = {
+  1: [
+    {lote:'1A',  m:'COARÍ X LAME',    tipo:'hibrido'},
+    {lote:'2A',  m:'COARÍ X LAME',    tipo:'hibrido'},
+    {lote:'3A',  m:'COARÍ X LAME',    tipo:'hibrido'},
+    {lote:'4A',  m:'COARÍ X LAME',    tipo:'hibrido'},
+    {lote:'5',   m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'6',   m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'7',   m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'8',   m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'9',   m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'10',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'11',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'11A', m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'12',  m:'Mezclas',         tipo:'guineensis'},
+    {lote:'13',  m:'Mezclas',         tipo:'guineensis'},
+    {lote:'14',  m:'Mezclas',         tipo:'guineensis'},
+    {lote:'15',  m:'Mezclas',         tipo:'guineensis'},
+    {lote:'16',  m:'Mezclas',         tipo:'guineensis'},
+    {lote:'17',  m:'Mezclas',         tipo:'guineensis'},
+    {lote:'18',  m:'Deli X Nigeria',  tipo:'guineensis'},
+    {lote:'18A', m:'Deli X Nigeria',  tipo:'guineensis'},
+  ],
+  2: [
+    {lote:'19',  m:'Deli X Nigeria',  tipo:'guineensis'},
+    {lote:'20',  m:'Deli X Nigeria',  tipo:'guineensis'},
+    {lote:'21',  m:'Deli X Nigeria',  tipo:'guineensis'},
+    {lote:'22',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'23',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'24',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'25',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'26',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'27',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'28',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'29',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'30',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'31',  m:'Deli X Nigeria',  tipo:'guineensis'},
+    {lote:'32A', m:'BAMENDA X EKONA', tipo:'guineensis'},
+    {lote:'33A', m:'BAMENDA X EKONA', tipo:'guineensis'},
+    {lote:'34A', m:'BAMENDA X EKONA', tipo:'guineensis'},
+    {lote:'35A', m:'BAMENDA X EKONA', tipo:'guineensis'},
+    {lote:'36',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'37',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'38',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'39',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'40',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'41',  m:'Deli X Ghana',    tipo:'guineensis'},
+  ],
+  3: [
+    {lote:'42',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'43A', m:'Mezclas',         tipo:'guineensis'},
+    {lote:'43B', m:'Mezclas',         tipo:'guineensis'},
+    {lote:'44A', m:'TANZANIA X EKONA',tipo:'guineensis'},
+    {lote:'45A', m:'TANZANIA X EKONA',tipo:'guineensis'},
+    {lote:'45B', m:'COARÍ X LAME',   tipo:'hibrido'},
+    {lote:'46',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'47',  m:'Deli X Nigeria',  tipo:'guineensis'},
+    {lote:'48',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'49',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'50',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'51',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'52',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'53',  m:'Deli X Lame',     tipo:'guineensis'},
+    {lote:'54',  m:'Deli X Ekona',    tipo:'guineensis'},
+    {lote:'55',  m:'Deli X Ekona',    tipo:'guineensis'},
+    {lote:'56',  m:'Deli X Ekona',    tipo:'guineensis'},
+    {lote:'57',  m:'Deli X Ghana',    tipo:'guineensis'},
+    {lote:'58',  m:'Deli X Lame',     tipo:'guineensis'},
+  ],
+};
+
+const VERDE_LIMITE = 3;
+const MAD_KEYS    = ['maduro','sobremaduro','verde','podrido'];
+const MAD_LABEL   = {maduro:'Maduro',sobremaduro:'Sobremaduro',verde:'Verde',podrido:'Podrido'};
+const MAD_CLS     = {maduro:'mpm',sobremaduro:'mps',verde:'mpv',podrido:'mpp'};
+const CRITERIOS   = [
+  {id:'suelto', n:'Fruto suelto en suelo',  p:1.5},
+  {id:'danio',  n:'Daño mecánico / cortes', p:1.5},
+  {id:'pedu',   n:'Pedúnculo largo',         p:1},
+  {id:'hoja',   n:'Disposición de hoja',     p:1},
+];
+
+// ══ ESTADO ═══════════════════════════════════════════════════════════════════
+var evals = [];
+var pts   = {};
+
+// ══ INIT ═════════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('inp-fecha').value = new Date().toISOString().split('T')[0];
+  renderCriterios();
+  renderProgSup();
+  renderPersonal();
+  actualizarBadgeCola();
+  cargarDesdeGAS();
+
+  // Detectar cambios de conexión
+  window.addEventListener('offline', function() {
+    var bar = document.getElementById('offline-bar');
+    if (bar) { bar.style.display = 'flex'; }
+    document.getElementById('online-bar').style.display = 'none';
+    actualizarBadgeCola();
+  });
+
+  window.addEventListener('online', function() {
+    document.getElementById('offline-bar').style.display = 'none';
+    var onBar = document.getElementById('online-bar');
+    onBar.style.display = 'flex';
+    setTimeout(function() { onBar.style.display = 'none'; }, 3500);
+    sincronizarCola();
+    cargarDesdeGAS();
+  });
+
+  // Al iniciar con red, sincronizar cola pendiente
+  if (navigator.onLine) {
+    setTimeout(sincronizarCola, 2000);
+  } else {
+    var bar = document.getElementById('offline-bar');
+    if (bar) bar.style.display = 'flex';
+  }
+});
+
+// ══ CICLO ════════════════════════════════════════════════════════════════════
+function calcCiclo() {
+  var selLote = document.getElementById('sel-lote');
+  var opt  = selLote ? selLote.options[selLote.selectedIndex] : null;
+  var tipo = opt && opt.dataset && opt.dataset.tipo ? opt.dataset.tipo : '';
+  var dias  = parseInt(document.getElementById('inp-dias').value);
+  var banner = document.getElementById('ciclo-banner');
+  var txt    = document.getElementById('ciclo-txt');
+  if (!tipo || isNaN(dias) || dias < 0) { banner.style.display = 'none'; return; }
+  var max   = CICLO_MAX[tipo];
+  var label = tipo === 'guineensis' ? 'Guineensis' : 'Híbrido';
+  banner.style.display = 'flex';
+  if (dias <= max) {
+    banner.className = 'ciclo-banner ciclo-ok';
+    txt.innerHTML = '<strong>' + label + '</strong> · <strong>' + dias + ' días</strong> desde última cosecha · Dentro de ciclo (máx ' + max + ' días)';
+  } else {
+    banner.className = 'ciclo-banner ciclo-warn';
+    txt.innerHTML = '<strong>' + label + '</strong> · <strong>' + dias + ' días</strong> · <strong>⚠ FUERA DE CICLO</strong> — excede ' + max + ' días por ' + (dias - max) + ' día' + (dias - max > 1 ? 's' : '');
+  }
+}
+
+// ══ RACIMOS ══════════════════════════════════════════════════════════════════
+function getRacimos() {
+  return {
+    maduro:      Math.max(0, parseInt(document.getElementById('r-maduro').value)      || 0),
+    sobremaduro: Math.max(0, parseInt(document.getElementById('r-sobremaduro').value) || 0),
+    verde:       Math.max(0, parseInt(document.getElementById('r-verde').value)       || 0),
+    podrido:     Math.max(0, parseInt(document.getElementById('r-podrido').value)     || 0),
+  };
+}
+
+function actualizarRacimos() {
+  var r   = getRacimos();
+  var tot = r.maduro + r.sobremaduro + r.verde + r.podrido;
+
+  var tv = document.getElementById('tot-val');
+  var tb = document.getElementById('tot-box');
+  tv.textContent = tot;
+  tb.className   = 'tot-box' + (tot > 0 ? ' ok' : '');
+
+  var vb  = document.getElementById('verde-box');
+  var vp  = document.getElementById('verde-pct');
+  var vl  = document.getElementById('verde-lbl');
+  var cal = document.getElementById('cal-cosechero');
+
+  if (tot === 0) {
+    vb.className  = 'verde-box';
+    vp.textContent = '—';
+    vl.textContent = '% Verdes';
+    cal.style.display = 'none';
+  } else {
+    var pct  = Math.round(r.verde / tot * 1000) / 10;
+    var malo = pct > VERDE_LIMITE;
+    vb.className   = 'verde-box ' + (malo ? 'verde-warn' : 'verde-ok');
+    vp.textContent = pct.toFixed(1) + '%';
+    vl.innerHTML   = malo
+      ? '<i class="ti ti-alert-triangle" style="font-size:12px;vertical-align:-1px"></i> Supera límite (3%)'
+      : '% Verdes — dentro del límite';
+    actualizarCalificacion(pct);
+    cal.style.display = 'block';
+  }
+
+  var barra = document.getElementById('mad-barra');
+  if (tot > 0) {
+    barra.style.display = 'flex';
+    document.getElementById('seg-m').style.width = Math.round(r.maduro      / tot * 100) + '%';
+    document.getElementById('seg-s').style.width = Math.round(r.sobremaduro / tot * 100) + '%';
+    document.getElementById('seg-v').style.width = Math.round(r.verde       / tot * 100) + '%';
+    document.getElementById('seg-p').style.width = Math.round(r.podrido     / tot * 100) + '%';
+  } else {
+    barra.style.display = 'none';
+  }
+}
+
+function actualizarCalificacion(pct) {
+  var card   = document.getElementById('cal-card');
+  var titulo = document.getElementById('cal-titulo');
+  var nota   = document.getElementById('cal-nota');
+  var desc   = document.getElementById('cal-desc');
+  var cls, t, n, d;
+  if (pct === 0)           { cls='cal-a'; t='Excelente'; n='A'; d='Sin racimos verdes — cosecha impecable'; }
+  else if (pct <= 1)       { cls='cal-a'; t='Muy bueno'; n='A'; d=pct.toFixed(1)+'% verde — dentro del límite permitido'; }
+  else if (pct <= VERDE_LIMITE) { cls='cal-b'; t='Aceptable'; n='B'; d=pct.toFixed(1)+'% verde — cerca del límite máximo (3%)'; }
+  else if (pct <= 5)       { cls='cal-c'; t='Deficiente'; n='C'; d=pct.toFixed(1)+'% verde — supera el límite. Requiere corrección'; }
+  else                     { cls='cal-c'; t='Crítico'; n='D'; d=pct.toFixed(1)+'% verde — muy por encima del límite. Acción inmediata'; }
+  card.className    = 'cal-card ' + cls;
+  titulo.textContent = t;
+  nota.textContent   = n;
+  desc.textContent   = d;
+}
+
+function calFromPct(pct) {
+  if (pct === 0)            return {nota:'A', label:'Excelente', cls:'tag-ok'};
+  if (pct <= 1)             return {nota:'A', label:'Muy bueno',  cls:'tag-ok'};
+  if (pct <= VERDE_LIMITE)  return {nota:'B', label:'Aceptable',  cls:'tag-warn'};
+  if (pct <= 5)             return {nota:'C', label:'Deficiente', cls:'tag-bad'};
+  return                          {nota:'D', label:'Crítico',    cls:'tag-bad'};
+}
+
+// ══ PERSONAL ═════════════════════════════════════════════════════════════════
+function onSupChange() {
+  var idx = document.getElementById('sel-sup').value;
+  var sel = document.getElementById('sel-cosech');
+  if (idx === '') { sel.innerHTML = '<option value="">— elige supervisor primero —</option>'; sel.disabled = true; return; }
+  sel.disabled = false;
+  var activos = personal.filter(function(p) { return p.supIdx === parseInt(idx) && p.activo; });
+  sel.innerHTML = '<option value="">Seleccionar cosechero...</option>';
+  activos.forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.cod; o.textContent = p.cod + ' — ' + p.nombre;
+    sel.appendChild(o);
+  });
+  renderProgSup();
+}
+
+function onFincaChange() {
+  var finca = document.getElementById('sel-finca').value;
+  var selLote = document.getElementById('sel-lote');
+  document.getElementById('lote-info-row').style.display = 'none';
+  document.getElementById('ciclo-banner').style.display  = 'none';
+  if (!finca) { selLote.innerHTML = '<option value="">— elige finca primero —</option>'; selLote.disabled = true; return; }
+  selLote.disabled = false;
+  selLote.innerHTML = '<option value="">Seleccionar lote...</option>';
+  LOTES[parseInt(finca)].forEach(function(l) {
+    var o = document.createElement('option');
+    o.value = l.lote;
+    o.textContent = 'Lote ' + l.lote + ' — ' + l.m;
+    o.dataset.tipo = l.tipo;
+    o.dataset.material = l.m;
+    selLote.appendChild(o);
+  });
+}
+
+function onLoteChange() {
+  var selLote = document.getElementById('sel-lote');
+  var opt = selLote.options[selLote.selectedIndex];
+  if (!opt || !opt.dataset.tipo) {
+    document.getElementById('lote-info-row').style.display = 'none';
+    document.getElementById('ciclo-banner').style.display  = 'none';
+    return;
+  }
+  document.getElementById('inp-material').value     = opt.dataset.material;
+  document.getElementById('inp-tipo-display').value = opt.dataset.tipo === 'hibrido' ? 'Híbrido (máx 22 días)' : 'Guineensis (máx 13 días)';
+  document.getElementById('lote-info-row').style.display = 'grid';
+  // auto-completar tipo palma para calcCiclo
+  document.getElementById('sel-finca')._selectedTipo = opt.dataset.tipo;
+  calcCiclo();
+}
+
+// ══ CRITERIOS ════════════════════════════════════════════════════════════════
+function renderCriterios() {
+  var g = document.getElementById('crit-grid');
+  g.innerHTML = '';
+  CRITERIOS.forEach(function(c) {
+    pts[c.id] = 0;
+    var d = document.createElement('div');
+    d.className = 'crow';
+    var btns = '';
+    for (var i = 1; i <= 5; i++) {
+      btns += '<button class="pb" id="pb-' + c.id + '-' + i + '" onclick="setP(\'' + c.id + '\',' + i + ')">' + i + '</button>';
+    }
+    d.innerHTML = '<span class="cnombre">' + c.n + '</span><div class="cpuntaje">' + btns + '</div><span class="bdg bwn" id="bg-' + c.id + '" style="opacity:.3">—</span>';
+    g.appendChild(d);
+  });
+}
+
+function setP(id, v) {
+  pts[id] = v;
+  for (var i = 1; i <= 5; i++) {
+    document.getElementById('pb-' + id + '-' + i).classList.toggle('sel', i === v);
+  }
+  var b = document.getElementById('bg-' + id);
+  b.style.opacity = '1';
+  b.textContent   = v;
+  b.className     = 'bdg ' + (v >= 4 ? 'bok' : v >= 3 ? 'bwn' : 'bbd');
+}
+
+function calcP(pm) {
+  var t = 0, w = 0;
+  CRITERIOS.forEach(function(c) { if (pm[c.id]) { t += pm[c.id] * c.p; w += c.p; } });
+  return w > 0 ? t / w : 0;
+}
+
+// ══ GUARDAR ══════════════════════════════════════════════════════════════════
+function guardar() {
+  var supIdx    = document.getElementById('sel-sup').value;
+  var cosechCod = document.getElementById('sel-cosech').value;
+  var finca     = document.getElementById('sel-finca').value;
+  var selLote   = document.getElementById('sel-lote');
+  var loteVal   = selLote.value;
+  var loteOpt   = selLote.options[selLote.selectedIndex];
+  var palma     = loteOpt && loteOpt.dataset && loteOpt.dataset.tipo ? loteOpt.dataset.tipo : '';
+  var material  = loteOpt && loteOpt.dataset ? loteOpt.dataset.material : '';
+  var lote      = finca && loteVal ? 'F' + finca + '-L' + loteVal : '';
+  var dias      = parseInt(document.getElementById('inp-dias').value);
+  var fecha     = document.getElementById('inp-fecha').value;
+
+  if (supIdx === '' || !cosechCod) { alert('Selecciona supervisor y cosechero.'); return; }
+  if (!finca || !loteVal) { alert('Selecciona finca y lote.'); return; }
+  if (!palma) { alert('Error al leer tipo de palma del lote.'); return; }
+  if (isNaN(dias) || dias < 0) { alert('Ingresa los días desde la última cosecha.'); return; }
+
+  var r   = getRacimos();
+  var tot = r.maduro + r.sobremaduro + r.verde + r.podrido;
+  if (tot < 1) { alert('Ingresa al menos 1 racimo evaluado.'); return; }
+
+  var allPts = CRITERIOS.every(function(c) { return pts[c.id] > 0; });
+  if (!allPts) { alert('Califica todos los parámetros de calidad.'); return; }
+
+  var si        = parseInt(supIdx);
+  var cosechero = personal.find(function(p) { return p.cod === cosechCod; });
+  var max       = CICLO_MAX[palma];
+  var pctVerde  = Math.round(r.verde / tot * 1000) / 10;
+  var cal       = calFromPct(pctVerde);
+
+  var registro = {
+    id:           generarId(),
+    action:       'guardar',
+    supervisor:   SUPS[si],
+    supIdx:       si,
+    cosechero:    cosechero ? cosechero.nombre : cosechCod,
+    cosechCod:    cosechCod,
+    lote:         lote,
+    finca:        finca,
+    loteNum:      loteVal,
+    material:     material,
+    palma:        palma,
+    fecha:        fecha,
+    diasCiclo:    dias,
+    maxCiclo:     max,
+    fueraCiclo:   dias > max,
+    racimos:      {maduro: r.maduro, sobremaduro: r.sobremaduro, verde: r.verde, podrido: r.podrido},
+    totalRacimos: tot,
+    pctVerde:     pctVerde,
+    cal:          cal,
+    obs:          document.getElementById('inp-obs').value,
+    pts:          {suelto: pts.suelto, danio: pts.danio, pedu: pts.pedu, hoja: pts.hoja},
+    prom:         Math.round(calcP(pts) * 10) / 10
+  };
+
+  evals.push(registro);
+
+  // Enviar al GAS (o encolar si no hay señal)
+  enviarAGAS(registro);
+
+  var t = document.getElementById('toast');
+  t.classList.add('show'); setTimeout(function() { t.classList.remove('show'); }, 2500);
+
+  // Reset
+  document.getElementById('sel-finca').value   = '';
+  document.getElementById('sel-lote').innerHTML = '<option value="">— elige finca primero —</option>';
+  document.getElementById('sel-lote').disabled  = true;
+  document.getElementById('lote-info-row').style.display = 'none';
+  document.getElementById('inp-dias').value    = '';
+  document.getElementById('inp-obs').value     = '';
+  document.getElementById('ciclo-banner').style.display = 'none';
+  document.getElementById('cal-cosechero').style.display = 'none';
+  ['r-maduro','r-sobremaduro','r-verde','r-podrido'].forEach(function(id) {
+    document.getElementById(id).value = 0;
+  });
+  actualizarRacimos();
+  pts = {};
+  renderCriterios();
+  renderProgSup();
+}
+
+// ══ PROGRESO DIARIO ══════════════════════════════════════════════════════════
+function renderProgSup() {
+  var hoy  = document.getElementById('inp-fecha').value || new Date().toISOString().split('T')[0];
+  var html = '';
+  SUPS.forEach(function(sup) {
+    var cnt  = evals.filter(function(e) { return e.supervisor === sup && e.fecha === hoy; }).length;
+    var done = cnt >= 4;
+    html += '<div class="alert-banner ' + (done ? 'alert-ok' : 'alert-warn') + '" style="margin-bottom:6px;">'
+      + '<i class="ti ' + (done ? 'ti-circle-check' : 'ti-alert-circle') + '"></i>'
+      + '<span style="flex:1"><strong>' + sup + '</strong> — ' + cnt + ' de 4 evaluaciones hoy</span>'
+      + '<span style="font-weight:600">' + (done ? '✓ Meta cumplida' : 'Faltan ' + (4 - cnt)) + '</span>'
+      + '</div>';
+  });
+  document.getElementById('prog-sup-wrap').innerHTML = html;
+}
+
+// ══ DASHBOARD ════════════════════════════════════════════════════════════════
+function sc(v) { return v >= 4 ? 'var(--g400)' : v >= 3 ? 'var(--a400)' : 'var(--r400)'; }
+function sl(v) { return v >= 4 ? 'Óptimo' : v >= 3 ? 'Aceptable' : 'Crítico'; }
+
+function upd() {
+  var hoy    = new Date().toISOString().split('T')[0];
+  var evHoy  = evals.filter(function(e) { return e.fecha === hoy; });
+  var totRacG = evals.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
+  var totVerde = evals.reduce(function(a,e) { return a + e.racimos.verde; }, 0);
+
+  document.getElementById('m-hoy').textContent = evHoy.length;
+  document.getElementById('m-tot').textContent = evals.length;
+  document.getElementById('m-rac').textContent = evHoy.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
+  var mv = document.getElementById('m-verde');
+  if (totRacG > 0) {
+    var pctG = (totVerde / totRacG * 100).toFixed(1) + '%';
+    mv.textContent = pctG;
+    mv.style.color = (totVerde / totRacG * 100) > 3 ? 'var(--r600)' : 'var(--tx)';
+  } else { mv.textContent = '—'; mv.style.color = 'var(--tx)'; }
+
+  // Progreso supervisores
+  var pdHtml = '';
+  SUPS.forEach(function(sup) {
+    var cnt  = evHoy.filter(function(e) { return e.supervisor === sup; }).length;
+    var pct  = Math.min(100, Math.round(cnt / 4 * 100));
+    var done = cnt >= 4;
+    pdHtml += '<div style="margin-bottom:10px;">'
+      + '<div class="prog-hdr"><span class="prog-lbl"><strong>' + sup + '</strong></span>'
+      + '<span style="font-size:12px;font-weight:600;color:' + (done ? 'var(--g600)' : 'var(--a600)') + '">' + cnt + '/4 ' + (done ? '✓' : '') + '</span></div>'
+      + '<div class="prog-track"><div class="prog-fill ' + (done ? 'done' : '') + '" style="width:' + pct + '%"></div></div></div>';
+  });
+  document.getElementById('prog-dashboard').innerHTML = pdHtml;
+
+  // Tarjetas supervisores
+  var sg = document.getElementById('sgrid'); sg.innerHTML = '';
+  SUPS.forEach(function(sup, i) {
+    var ev   = evals.filter(function(e) { return e.supervisor === sup; });
+    var card = document.createElement('div'); card.className = 'scard';
+    if (!ev.length) {
+      card.innerHTML = '<div class="shdr"><div class="av av' + (i+1) + '">' + INI[sup] + '</div><div><div class="sname">' + sup + '</div><div class="smeta">Sin evaluaciones</div></div></div><div class="empty" style="padding:.75rem 0">—</div>';
+    } else {
+      var racTot   = ev.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
+      var verdes   = ev.reduce(function(a,e) { return a + e.racimos.verde; }, 0);
+      var pctV     = racTot > 0 ? Math.round(verdes / racTot * 1000) / 10 : 0;
+      var pctVmalo = pctV > VERDE_LIMITE;
+      var pm       = ev.reduce(function(a,e) { return a + e.prom; }, 0) / ev.length;
+      var racsAcum = {maduro:0, sobremaduro:0, verde:0, podrido:0};
+      ev.forEach(function(e) { MAD_KEYS.forEach(function(k) { racsAcum[k] += e.racimos[k] || 0; }); });
+      var rt = racTot || 1;
+      var fueraCiclo = ev.filter(function(e) { return e.fueraCiclo; }).length;
+
+      var bars = '';
+      CRITERIOS.forEach(function(c) {
+        var v   = ev.reduce(function(a,e) { return a + (e.pts[c.id] || 0); }, 0) / ev.length;
+        var pct = Math.round(v / 5 * 100);
+        var cl  = v >= 4 ? 'fg-' : v >= 3 ? 'fa-' : 'fr-';
+        bars += '<div class="brow"><div class="blbl"><span>' + c.n + '</span><span>' + v.toFixed(1) + '</span></div>'
+              + '<div class="btrack"><div class="bfill ' + cl + '" style="width:' + pct + '%"></div></div></div>';
+      });
+
+      var fueraBadge = fueraCiclo > 0
+        ? '<div style="flex:1;background:var(--r50);border-radius:var(--rr);padding:8px 10px;border:.5px solid var(--r400);">'
+          + '<div style="font-size:10px;font-weight:600;color:var(--r600);">FUERA CICLO</div>'
+          + '<div style="font-size:20px;font-weight:700;color:var(--r600);">' + fueraCiclo + '</div>'
+          + '<div style="font-size:10px;color:var(--r600);">lote' + (fueraCiclo > 1 ? 's' : '') + ' con atraso</div></div>'
+        : '';
+
+      card.innerHTML =
+        '<div class="shdr"><div class="av av' + (i+1) + '">' + INI[sup] + '</div><div>'
+        + '<div class="sname">' + sup + '</div>'
+        + '<div class="smeta">' + ev.length + ' eval · ' + racTot + ' racimos · Prom <strong>' + pm.toFixed(1) + '/5</strong></div>'
+        + '</div></div>'
+        + '<div style="display:flex;gap:8px;margin-bottom:.875rem;flex-wrap:wrap;">'
+        + '<div style="flex:1;background:' + (pctVmalo ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:8px 10px;border:.5px solid ' + (pctVmalo ? 'var(--r400)' : 'var(--g400)') + ';">'
+        + '<div style="font-size:10px;font-weight:600;color:' + (pctVmalo ? 'var(--r600)' : 'var(--g600)') + ';">% VERDE</div>'
+        + '<div style="font-size:20px;font-weight:700;color:' + (pctVmalo ? 'var(--r600)' : 'var(--g600)') + ';">' + pctV.toFixed(1) + '%</div>'
+        + '<div style="font-size:10px;color:' + (pctVmalo ? 'var(--r600)' : 'var(--g600)') + ';">' + (pctVmalo ? '⚠ Supera 3%' : 'Dentro del límite') + '</div></div>'
+        + fueraBadge + '</div>'
+        + '<div class="stitle" style="margin:.25rem 0 .35rem;font-size:10px;"><i class="ti ti-apple"></i> Racimos por madurez</div>'
+        + '<div class="mad-dist">'
+        + '<div class="mad-pill mp-m"><span class="mad-pct">' + racsAcum.maduro + '</span>' + Math.round(racsAcum.maduro/rt*100) + '%<br>Maduro</div>'
+        + '<div class="mad-pill mp-s"><span class="mad-pct">' + racsAcum.sobremaduro + '</span>' + Math.round(racsAcum.sobremaduro/rt*100) + '%<br>Sobrem.</div>'
+        + '<div class="mad-pill mp-v"><span class="mad-pct">' + racsAcum.verde + '</span>' + Math.round(racsAcum.verde/rt*100) + '%<br>Verde</div>'
+        + '<div class="mad-pill mp-p"><span class="mad-pct">' + racsAcum.podrido + '</span>' + Math.round(racsAcum.podrido/rt*100) + '%<br>Podrido</div>'
+        + '</div>'
+        + '<div class="stitle" style="margin:.875rem 0 .35rem;font-size:10px;"><i class="ti ti-chart-bar"></i> Parámetros de calidad</div>'
+        + bars;
+    }
+    sg.appendChild(card);
+  });
+
+  // Comparativa
+  var cw = document.getElementById('cwrap');
+  var e1 = evals.filter(function(e) { return e.supervisor === SUPS[0]; });
+  var e2 = evals.filter(function(e) { return e.supervisor === SUPS[1]; });
+  if (!e1.length && !e2.length) {
+    cw.innerHTML = '<div class="empty"><i class="ti ti-arrows-diff"></i>Registra evaluaciones para ver la comparativa</div>';
+  } else {
+    var r1   = e1.reduce(function(a,e) { return a + e.totalRacimos; }, 0) || 1;
+    var r2   = e2.reduce(function(a,e) { return a + e.totalRacimos; }, 0) || 1;
+    var pv1  = e1.length ? Math.round(e1.reduce(function(a,e) { return a+e.racimos.verde; }, 0) / r1 * 1000) / 10 : null;
+    var pv2  = e2.length ? Math.round(e2.reduce(function(a,e) { return a+e.racimos.verde; }, 0) / r2 * 1000) / 10 : null;
+
+    var h = '<div class="cleg">'
+      + '<div class="cli"><div class="cld" style="background:var(--g400)"></div><span>' + SUPS[0] + '</span></div>'
+      + '<div class="cli"><div class="cld" style="background:var(--b600)"></div><span>' + SUPS[1] + '</span></div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.1rem;">'
+      + '<div style="background:' + (pv1 !== null && pv1 > 3 ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:10px 12px;border:.5px solid ' + (pv1 !== null && pv1 > 3 ? 'var(--r400)' : 'var(--g400)') + ';">'
+      + '<div style="font-size:10px;font-weight:600;color:var(--tx2);margin-bottom:2px;">' + SUPS[0] + '</div>'
+      + '<div style="font-size:22px;font-weight:700;color:' + (pv1 !== null && pv1 > 3 ? 'var(--r600)' : 'var(--g600)') + ';">' + (pv1 !== null ? pv1.toFixed(1) + '%' : '—') + '</div>'
+      + '<div style="font-size:11px;color:var(--tx2);">% verde acumulado</div></div>'
+      + '<div style="background:' + (pv2 !== null && pv2 > 3 ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:10px 12px;border:.5px solid ' + (pv2 !== null && pv2 > 3 ? 'var(--r400)' : 'var(--g400)') + ';">'
+      + '<div style="font-size:10px;font-weight:600;color:var(--tx2);margin-bottom:2px;">' + SUPS[1] + '</div>'
+      + '<div style="font-size:22px;font-weight:700;color:' + (pv2 !== null && pv2 > 3 ? 'var(--r600)' : 'var(--g600)') + ';">' + (pv2 !== null ? pv2.toFixed(1) + '%' : '—') + '</div>'
+      + '<div style="font-size:11px;color:var(--tx2);">% verde acumulado</div></div></div>'
+      + '<div class="stitle"><i class="ti ti-checklist"></i> Parámetros de calidad</div>';
+
+    CRITERIOS.forEach(function(c) {
+      var v1 = e1.length ? e1.reduce(function(a,e) { return a + (e.pts[c.id] || 0); }, 0) / e1.length : 0;
+      var v2 = e2.length ? e2.reduce(function(a,e) { return a + (e.pts[c.id] || 0); }, 0) / e2.length : 0;
+      h += '<div class="comp-row"><span class="clbl">' + c.n + '</span><div class="cbars">'
+        + '<div class="cbline"><div class="cbar" style="background:var(--g400);width:' + Math.round(v1/5*100) + '%"></div><span class="cval" style="color:var(--g600)">' + (v1 > 0 ? v1.toFixed(1) : '—') + '</span></div>'
+        + '<div class="cbline"><div class="cbar" style="background:var(--b600);width:' + Math.round(v2/5*100) + '%"></div><span class="cval" style="color:var(--b600)">' + (v2 > 0 ? v2.toFixed(1) : '—') + '</span></div>'
+        + '</div></div>';
+    });
+
+    h += '<div class="stitle" style="margin-top:1.1rem;"><i class="ti ti-apple"></i> % racimos por madurez</div>';
+    MAD_KEYS.forEach(function(k) {
+      var rv1 = e1.reduce(function(a,e) { return a + (e.racimos[k] || 0); }, 0);
+      var rv2 = e2.reduce(function(a,e) { return a + (e.racimos[k] || 0); }, 0);
+      var p1  = Math.round(rv1 / r1 * 100), p2 = Math.round(rv2 / r2 * 100);
+      h += '<div class="comp-row"><span class="clbl">' + MAD_LABEL[k] + '</span><div class="cbars">'
+        + '<div class="cbline"><div class="cbar" style="background:var(--g400);width:' + p1 + '%"></div><span class="cval" style="color:var(--g600)">' + (e1.length ? p1 + '%' : '—') + '</span></div>'
+        + '<div class="cbline"><div class="cbar" style="background:var(--b600);width:' + p2 + '%"></div><span class="cval" style="color:var(--b600)">' + (e2.length ? p2 + '%' : '—') + '</span></div>'
+        + '</div></div>';
+    });
+    cw.innerHTML = h;
+  }
+
+  // Historial
+  var hb = document.getElementById('hbody');
+  if (!evals.length) { hb.innerHTML = '<div class="empty">Sin evaluaciones registradas</div>'; return; }
+  var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
+  hb.innerHTML = evals.slice().reverse().map(function(e) {
+    var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
+      .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
+    var cicloTag = e.fueraCiclo
+      ? '<span class="tag tag-bad">⚠ +' + (e.diasCiclo - e.maxCiclo) + 'd fuera</span>'
+      : '<span class="tag tag-ok">' + e.diasCiclo + 'd ✓</span>';
+    var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
+    return '<div class="hrow">'
+      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
+      + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
+      + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma) + '<br>' + cicloTag + '</span>'
+      + '<span><div class="mini-pills">' + pills + '</div></span>'
+      + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
+      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
+      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
+      + '</div>';
+  }).join('');
+}
+
+// ══ OFFLINE / COLA LOCAL ═════════════════════════════════════════════════════
+var QUEUE_KEY = 'cosecha_queue';
+
+function generarId() {
+  return 'EV-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+}
+
+function leerCola() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function guardarCola(cola) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(cola));
+}
+
+function agregarACola(payload) {
+  var cola = leerCola();
+  // Evitar duplicados por ID
+  if (!cola.find(function(x) { return x.id === payload.id; })) {
+    cola.push(payload);
+    guardarCola(cola);
+  }
+  actualizarBadgeCola();
+}
+
+function actualizarBadgeCola() {
+  var cola  = leerCola();
+  var badge = document.getElementById('offline-pending');
+  if (badge) badge.textContent = cola.length + ' pendiente' + (cola.length !== 1 ? 's' : '');
+}
+
+function sincronizarCola() {
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return;
+  var cola = leerCola();
+  if (cola.length === 0) return;
+
+  var promesas = cola.map(function(payload) {
+    return fetch(GAS_URL, { method:'POST', body: JSON.stringify(payload) })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok || d.duplicado) return payload.id; // éxito o ya existía → quitar de cola
+        return null;
+      })
+      .catch(function() { return null; });
+  });
+
+  Promise.all(promesas).then(function(resultados) {
+    var exitosos = resultados.filter(function(id) { return id !== null; });
+    if (exitosos.length > 0) {
+      var cola = leerCola().filter(function(x) { return !exitosos.includes(x.id); });
+      guardarCola(cola);
+      actualizarBadgeCola();
+      console.log('Sincronizados ' + exitosos.length + ' registros.');
+    }
+  });
+}
+
+// ══ GAS ══════════════════════════════════════════════════════════════════════
+function enviarAGAS(payload) {
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') {
+    agregarACola(payload); // Sin URL configurada, guardar en cola
+    return;
+  }
+  if (!navigator.onLine) {
+    agregarACola(payload);
+    return;
+  }
+  fetch(GAS_URL, { method:'POST', body: JSON.stringify(payload) })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.ok && !d.duplicado) {
+        console.warn('GAS error, guardando en cola:', d.error);
+        agregarACola(payload);
+      }
+    })
+    .catch(function(e) {
+      console.warn('Sin red, guardando en cola:', e);
+      agregarACola(payload);
+    });
+}
+
+function cargarDesdeGAS() {
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return;
+  var banner = document.getElementById('sync-banner');
+  banner.style.display = 'flex';
+
+  // Cargar personal y evaluaciones en paralelo
+  var promPersonal = fetch(GAS_URL + '?action=listarPersonal')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok && data.data.length > 0) {
+        personal = data.data;
+        renderPersonal();
+        renderProgSup();
+      }
+    })
+    .catch(function(e) { console.warn('GAS personal no disponible:', e); });
+
+  var promEvals = fetch(GAS_URL + '?action=listar')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok && data.data.length > 0) {
+        evals = data.data.map(function(r) {
+          return {
+            supervisor: r['Supervisor'], supIdx: SUPS.indexOf(r['Supervisor']),
+            cosechero: r['Cosechero'], cosechCod: r['Código'],
+            lote: r['Frente/Lote'], palma: r['Tipo Palma'], fecha: r['Fecha'],
+            diasCiclo: parseFloat(r['Días Ciclo'])||0, maxCiclo: CICLO_MAX[r['Tipo Palma']]||0,
+            fueraCiclo: r['Fuera Ciclo']==='SÍ',
+            racimos: { maduro: parseFloat(r['Racimos Maduros'])||0, sobremaduro: parseFloat(r['Racimos Sobremaduro'])||0, verde: parseFloat(r['Racimos Verdes'])||0, podrido: parseFloat(r['Racimos Podridos'])||0 },
+            totalRacimos: parseFloat(r['Total Racimos'])||0, pctVerde: parseFloat(r['% Verde'])||0,
+            cal: { nota: r['Calificación Nota'], label: r['Calificación Label'], cls: r['Calificación Nota']==='A'?'tag-ok':r['Calificación Nota']==='B'?'tag-warn':'tag-bad' },
+            pts: { suelto: parseFloat(r['Fruto Suelto'])||0, danio: parseFloat(r['Daño Mecánico'])||0, pedu: parseFloat(r['Pedúnculo Largo'])||0, hoja: parseFloat(r['Disposición Hoja'])||0 },
+            prom: parseFloat(r['Prom Parámetros'])||0, obs: r['Observaciones']||''
+          };
+        });
+      }
+    })
+    .catch(function(e) { console.warn('GAS evals no disponible:', e); });
+
+  Promise.all([promPersonal, promEvals]).finally(function() {
+    banner.style.display = 'none';
+  });
+}
+
+// ══ PERSONAL ════════════════════════════════════════════════════════════════
+// Se carga desde Google Sheets al iniciar
+var personal = [];
+var editandoCod = null;
+
+function guardarPersonal() {
+  // Los cosecheros se agregan directamente en el Google Sheet (hoja "Personal")
+  // Desde la app solo se puede activar/inactivar
+  alert('Para agregar cosecheros, ve al Google Sheet y agrégalos en la hoja "Personal".');
+}
+
+function editarPersonal(cod) {
+  var p = personal.find(function(x) { return x.cod === cod; });
+  if (!p) return;
+  editandoCod = cod;
+  document.getElementById('fp-sup').value    = p.supIdx;
+  document.getElementById('fp-cod').value    = p.cod;
+  document.getElementById('fp-nombre').value = p.nombre;
+  document.getElementById('form-personal-titulo').textContent = 'Editar cosechero';
+  document.getElementById('fp-btn-txt').textContent = 'Guardar cambios';
+  document.getElementById('fp-btn-cancel').style.display = 'block';
+  document.getElementById('form-personal-card').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelarEditPersonal() {
+  editandoCod = null;
+  document.getElementById('fp-sup').value    = '';
+  document.getElementById('fp-cod').value    = '';
+  document.getElementById('fp-nombre').value = '';
+  document.getElementById('form-personal-titulo').textContent = 'Agregar cosechero';
+  document.getElementById('fp-btn-txt').textContent = 'Guardar cosechero';
+  document.getElementById('fp-btn-cancel').style.display = 'none';
+}
+
+function toggleActivo(cod) {
+  var p = personal.find(function(x) { return x.cod === cod; });
+  if (!p) return;
+  var nuevoEstado = !p.activo;
+  p.activo = nuevoEstado;
+  renderPersonal();
+  // Sincronizar con Google Sheets
+  if (GAS_URL && GAS_URL !== 'TU_URL_GAS_AQUI') {
+    fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({action: 'togglePersonal', cod: cod, activo: nuevoEstado})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.ok) { alert('Error al guardar en Sheet: ' + d.error); }
+    })
+    .catch(function(e) { console.warn('GAS toggle error:', e); });
+  }
+}
+
+function renderPersonal() {
+  var wrap = document.getElementById('personal-list');
+  var html = '';
+  SUPS.forEach(function(sup, i) {
+    var grupo = personal.filter(function(p) { return p.supIdx === i; });
+    var activos = grupo.filter(function(p) { return p.activo; }).length;
+    html += '<div class="personal-sup-block">'
+      + '<div class="personal-sup-hdr">'
+      + '<div class="av av' + (i+1) + '">' + INI[sup] + '</div>'
+      + '<div><div class="sname">' + sup + '</div>'
+      + '<div class="smeta">' + activos + ' activo' + (activos !== 1 ? 's' : '') + ' de ' + grupo.length + '</div></div>'
+      + '</div>'
+      + '<div class="personal-table">'
+      + '<div class="personal-hdr"><span>Código</span><span>Nombre</span><span>Estado</span><span>Acciones</span></div>';
+    if (grupo.length === 0) {
+      html += '<div style="padding:1.5rem;text-align:center;color:var(--tx3);font-size:13px;">Sin cosecheros registrados</div>';
+    } else {
+      grupo.forEach(function(p) {
+        html += '<div class="personal-row' + (p.activo ? '' : ' inactivo') + '">'
+          + '<span style="font-weight:600;font-family:monospace;font-size:13px;">' + p.cod + '</span>'
+          + '<span>' + p.nombre + '</span>'
+          + '<span><span class="status-dot ' + (p.activo ? 'dot-activo' : 'dot-inactivo') + '"></span>'
+          + (p.activo ? 'Activo' : 'Inactivo') + '</span>'
+          + '<span><div class="personal-actions">'
+          + '<button class="btn-sm btn-edit" onclick="editarPersonal(\'' + p.cod + '\')"><i class="ti ti-pencil"></i></button>'
+          + '<button class="btn-sm ' + (p.activo ? 'btn-toggle-off' : 'btn-toggle-on') + '" onclick="toggleActivo(\'' + p.cod + '\')">'
+          + '<i class="ti ' + (p.activo ? 'ti-user-off' : 'ti-user-check') + '"></i> ' + (p.activo ? 'Inactivar' : 'Activar') + '</button>'
+          + '</div></span></div>';
+      });
+    }
+    html += '</div></div>';
+  });
+  wrap.innerHTML = html;
+
+  // Actualizar selector de cosecheros en registro
+  actualizarSelectCosecheros();
+}
+
+function actualizarSelectCosecheros() {
+  var supIdx = document.getElementById('sel-sup').value;
+  var sel    = document.getElementById('sel-cosech');
+  if (supIdx === '') return;
+  var activos = personal.filter(function(p) { return p.supIdx === parseInt(supIdx) && p.activo; });
+  sel.innerHTML = '<option value="">Seleccionar cosechero...</option>';
+  activos.forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.cod; o.textContent = p.cod + ' — ' + p.nombre;
+    sel.appendChild(o);
+  });
+}
+
+function sincPersonalGAS() {
+  // No usado — el toggle individual maneja la sincronización
+}
+
+// ══ SERVICE WORKER (independiente, no bloquea la app) ═══════════════════════
+(function() {
+  try {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js')
+          .then(function(reg) { console.log('SW registrado:', reg.scope); })
+          .catch(function(e)  { console.warn('SW no disponible (normal en preview):', e.message); });
+      });
+    }
+  } catch(e) { /* ignorar — no afecta el funcionamiento */ }
+})();
+
+// ══ NAVEGACIÓN ═══════════════════════════════════════════════════════════════
+function showTab(id, btn) {
+  document.querySelectorAll('.sec').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('sec-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'personal') { renderPersonal(); return; }
+  if (id !== 'registro') upd();
+}
+</script>
+</body>
+</html>
