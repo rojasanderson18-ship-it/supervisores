@@ -115,6 +115,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .obs{width:100%;padding:8px 10px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx);font-size:13px;resize:none;height:60px;font-family:inherit;outline:none;}
 .bsave{width:100%;padding:11px;background:var(--g600);color:#fff;border:none;border-radius:var(--rr);font-size:14px;font-weight:500;cursor:pointer;margin-top:.875rem;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s;}
 .bsave:hover{background:var(--g800);}
+.field-error select,.field-error input{border-color:var(--r400)!important;background:var(--r50)!important;}
+.field-error-msg{font-size:11px;color:var(--r600);margin-top:3px;display:flex;align-items:center;gap:3px;}
+.error-banner{display:none;background:var(--r50);border:.5px solid var(--r400);border-radius:var(--rr);padding:10px 14px;margin-bottom:.875rem;font-size:13px;color:var(--r600);align-items:center;gap:8px;}
+.error-banner.show{display:flex;}
 /* Alertas meta */
 .alert-banner{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:var(--rr);font-size:12px;margin-bottom:6px;}
 .alert-warn{background:var(--a50);color:var(--a600);border:.5px solid var(--a400);}
@@ -388,6 +392,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <!-- 5. Observaciones + Guardar -->
     <div class="stitle"><i class="ti ti-note"></i> Observaciones</div>
     <textarea class="obs" id="inp-obs" placeholder="Novedades, incidencias o recomendaciones..."></textarea>
+    <div class="error-banner" id="error-banner"><i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><span id="error-msg"></span></div>
     <button class="bsave" onclick="guardar()"><i class="ti ti-device-floppy"></i> Guardar evaluación</button>
   </div>
 
@@ -798,6 +803,43 @@ function calcP(pm) {
 }
 
 // ══ GUARDAR ══════════════════════════════════════════════════════════════════
+function marcarError(id, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var parent = el.parentElement;
+  parent.classList.add('field-error');
+  // Agregar mensaje si no existe
+  if (!parent.querySelector('.field-error-msg')) {
+    var span = document.createElement('span');
+    span.className = 'field-error-msg';
+    span.innerHTML = '<i class="ti ti-alert-circle" style="font-size:12px"></i>' + msg;
+    parent.appendChild(span);
+  }
+  // Limpiar al cambiar
+  el.addEventListener('change', limpiarErrores, {once:true});
+  el.addEventListener('input',  limpiarErrores, {once:true});
+}
+
+function limpiarErrores() {
+  document.querySelectorAll('.field-error').forEach(function(el) {
+    el.classList.remove('field-error');
+    var msg = el.querySelector('.field-error-msg');
+    if (msg) msg.remove();
+  });
+  var banner = document.getElementById('error-banner');
+  if (banner) banner.classList.remove('show');
+}
+
+function mostrarErrorBanner(msg) {
+  var banner = document.getElementById('error-banner');
+  var txt    = document.getElementById('error-msg');
+  if (banner && txt) {
+    txt.textContent = msg;
+    banner.classList.add('show');
+    banner.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+}
+
 function guardar() {
   var supIdx    = document.getElementById('sel-sup').value;
   var cosechCod = document.getElementById('sel-cosech').value;
@@ -811,17 +853,37 @@ function guardar() {
   var dias      = parseInt(document.getElementById('inp-dias').value);
   var fecha     = document.getElementById('inp-fecha').value;
 
-  if (supIdx === '' || !cosechCod) { alert('Selecciona supervisor y cosechero.'); return; }
-  if (!finca || !loteVal) { alert('Selecciona finca y lote.'); return; }
-  if (!palma) { alert('Error al leer tipo de palma del lote.'); return; }
-  if (isNaN(dias) || dias < 0) { alert('Ingresa los días desde la última cosecha.'); return; }
+  // Limpiar errores previos
+  limpiarErrores();
+
+  var errores = [];
+
+  if (supIdx === '')  { marcarError('sel-sup',    'Selecciona el supervisor'); errores.push('supervisor'); }
+  if (!cosechCod)     { marcarError('sel-cosech', 'Selecciona el cosechero');  errores.push('cosechero'); }
+  if (!finca)         { marcarError('sel-finca',  'Selecciona la finca');      errores.push('finca'); }
+  if (!loteVal)       { marcarError('sel-lote',   'Selecciona el lote');       errores.push('lote'); }
+  if (isNaN(dias) || dias < 0) { marcarError('inp-dias', 'Ingresa los días desde la última cosecha'); errores.push('dias'); }
 
   var r   = getRacimos();
   var tot = r.maduro + r.sobremaduro + r.verde + r.podrido;
-  if (tot < 1) { alert('Ingresa al menos 1 racimo evaluado.'); return; }
+  if (tot < 1) { errores.push('racimos'); }
 
   var allPts = CRITERIOS.every(function(c) { return pts[c.id] > 0; });
-  if (!allPts) { alert('Califica todos los parámetros de calidad.'); return; }
+  if (!allPts) { errores.push('parametros'); }
+
+  if (errores.length > 0) {
+    var msgs = [];
+    if (errores.includes('supervisor') || errores.includes('cosechero')) msgs.push('Selecciona supervisor y cosechero');
+    if (errores.includes('finca') || errores.includes('lote')) msgs.push('Selecciona finca y lote');
+    if (errores.includes('dias')) msgs.push('Ingresa los días desde la última cosecha');
+    if (errores.includes('racimos')) msgs.push('Ingresa al menos 1 racimo evaluado');
+    if (errores.includes('parametros')) msgs.push('Califica todos los parámetros de calidad');
+    mostrarErrorBanner(msgs.join(' · '));
+    // Scroll al primer error
+    var primerError = document.querySelector('.field-error select, .field-error input');
+    if (primerError) primerError.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
 
   var si        = parseInt(supIdx);
   var cosechero = personal.find(function(p) { return p.cod === cosechCod; });
@@ -862,7 +924,8 @@ function guardar() {
   var t = document.getElementById('toast');
   t.classList.add('show'); setTimeout(function() { t.classList.remove('show'); }, 2500);
 
-  // Reset
+  // Reset + limpiar errores
+  limpiarErrores();
   document.getElementById('sel-finca').value   = '';
   document.getElementById('sel-lote').innerHTML = '<option value="">— elige finca primero —</option>';
   document.getElementById('sel-lote').disabled  = true;
