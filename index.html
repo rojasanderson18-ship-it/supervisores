@@ -62,8 +62,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rl-s{background:var(--a50);color:var(--a600);}
 .rl-v{background:var(--p50);color:var(--p600);}
 .rl-p{background:var(--r50);color:var(--r600);}
-.rinput{text-align:center;font-size:20px;font-weight:700;padding:10px 6px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx);outline:none;width:100%;}
-.rinput:focus{border-color:var(--g400);}
+.rinput{text-align:center;font-size:22px;font-weight:700;padding:6px 4px;border:none;background:transparent;color:var(--tx);outline:none;width:52px;-moz-appearance:textfield;}
+.rinput::-webkit-outer-spin-button,.rinput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.counter-wrap{display:flex;align-items:center;justify-content:center;gap:0;background:var(--bg2);border-radius:var(--rr);border:.5px solid var(--bd2);overflow:hidden;}
+.counter-btn{width:38px;height:48px;border:none;background:none;font-size:22px;font-weight:300;color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;user-select:none;-webkit-tap-highlight-color:transparent;}
+.counter-btn:hover{background:var(--bg3);color:var(--tx);}
+.counter-btn:active{background:var(--bd);transform:scale(.93);}
+.racimo-pct{font-size:11px;font-weight:600;text-align:center;margin-top:4px;color:var(--tx3);transition:color .2s;}
 .tot-row{display:flex;gap:10px;margin-bottom:10px;}
 .tot-box{flex:1;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--rr);background:var(--bg2);border:.5px solid var(--bd);}
 .tot-box.ok{background:var(--g50);border-color:var(--g400);}
@@ -308,19 +313,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="racimos-grid">
         <div class="rg">
           <div class="rlabel rl-m"><i class="ti ti-circle-check" style="font-size:14px"></i>Maduro</div>
-          <input type="number" class="rinput" id="r-maduro" min="0" value="0" oninput="actualizarRacimos()">
+          <div class="counter-wrap">
+          <button type="button" class="counter-btn" onclick="stepCounter('r-maduro',-1)">−</button>
+          <input type="number" class="rinput" id="r-maduro" min="0" value="0" oninput="actualizarRacimos()" readonly>
+          <button type="button" class="counter-btn" onclick="stepCounter('r-maduro',1)">+</button>
+        </div>
+        <div class="racimo-pct" id="pct-maduro">0%</div>
         </div>
         <div class="rg">
           <div class="rlabel rl-s"><i class="ti ti-alert-triangle" style="font-size:14px"></i>Sobremaduro</div>
-          <input type="number" class="rinput" id="r-sobremaduro" min="0" value="0" oninput="actualizarRacimos()">
+          <div class="counter-wrap">
+          <button type="button" class="counter-btn" onclick="stepCounter('r-sobremaduro',-1)">−</button>
+          <input type="number" class="rinput" id="r-sobremaduro" min="0" value="0" oninput="actualizarRacimos()" readonly>
+          <button type="button" class="counter-btn" onclick="stepCounter('r-sobremaduro',1)">+</button>
+        </div>
+        <div class="racimo-pct" id="pct-sobremaduro">0%</div>
         </div>
         <div class="rg">
           <div class="rlabel rl-v"><i class="ti ti-leaf" style="font-size:14px"></i>Verde</div>
-          <input type="number" class="rinput" id="r-verde" min="0" value="0" oninput="actualizarRacimos()">
+          <div class="counter-wrap">
+          <button type="button" class="counter-btn" onclick="stepCounter('r-verde',-1)">−</button>
+          <input type="number" class="rinput" id="r-verde" min="0" value="0" oninput="actualizarRacimos()" readonly>
+          <button type="button" class="counter-btn" onclick="stepCounter('r-verde',1)">+</button>
+        </div>
+        <div class="racimo-pct" id="pct-verde">0%</div>
         </div>
         <div class="rg">
           <div class="rlabel rl-p"><i class="ti ti-x" style="font-size:14px"></i>Podrido</div>
-          <input type="number" class="rinput" id="r-podrido" min="0" value="0" oninput="actualizarRacimos()">
+          <div class="counter-wrap">
+          <button type="button" class="counter-btn" onclick="stepCounter('r-podrido',-1)">−</button>
+          <input type="number" class="rinput" id="r-podrido" min="0" value="0" oninput="actualizarRacimos()" readonly>
+          <button type="button" class="counter-btn" onclick="stepCounter('r-podrido',1)">+</button>
+        </div>
+        <div class="racimo-pct" id="pct-podrido">0%</div>
         </div>
       </div>
       <div class="tot-row">
@@ -593,6 +618,14 @@ function getRacimos() {
   };
 }
 
+function stepCounter(id, delta) {
+  var inp = document.getElementById(id);
+  var val = parseInt(inp.value) || 0;
+  val = Math.max(0, val + delta);
+  inp.value = val;
+  actualizarRacimos();
+}
+
 function actualizarRacimos() {
   var r   = getRacimos();
   var tot = r.maduro + r.sobremaduro + r.verde + r.podrido;
@@ -623,6 +656,25 @@ function actualizarRacimos() {
     actualizarCalificacion(pct);
     cal.style.display = 'block';
   }
+
+  // Actualizar % de cada tipo
+  var pctMap = {
+    'pct-maduro':      tot > 0 ? Math.round(r.maduro      / tot * 1000) / 10 : 0,
+    'pct-sobremaduro': tot > 0 ? Math.round(r.sobremaduro / tot * 1000) / 10 : 0,
+    'pct-verde':       tot > 0 ? Math.round(r.verde       / tot * 1000) / 10 : 0,
+    'pct-podrido':     tot > 0 ? Math.round(r.podrido     / tot * 1000) / 10 : 0,
+  };
+  var colorMap = {
+    'pct-maduro':'var(--g600)', 'pct-sobremaduro':'var(--a600)',
+    'pct-verde':'var(--p600)',  'pct-podrido':'var(--r600)'
+  };
+  Object.keys(pctMap).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.textContent = tot > 0 ? pctMap[id].toFixed(1) + '%' : '0%';
+      el.style.color = tot > 0 && pctMap[id] > 0 ? colorMap[id] : 'var(--tx3)';
+    }
+  });
 
   var barra = document.getElementById('mad-barra');
   if (tot > 0) {
