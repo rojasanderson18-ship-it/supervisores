@@ -1889,7 +1889,6 @@ function renderHistorialFiltrado() {
 }
 
 function exportarHistorialPDF() {
-  // Si no hay datos, cargar primero del GAS
   if (evals.length === 0) {
     var btn = event.target.closest('button');
     var txtOrig = btn.innerHTML;
@@ -1907,7 +1906,7 @@ function exportarHistorialPDF() {
     }).catch(function() {
       btn.innerHTML = txtOrig;
       btn.disabled = false;
-      alert('No se pudo cargar los datos. Verifica tu conexión.');
+      alert('No se pudo cargar los datos.');
     });
     return;
   }
@@ -1915,107 +1914,50 @@ function exportarHistorialPDF() {
 
   var desde  = document.getElementById('hist-desde').value;
   var hasta  = document.getElementById('hist-hasta').value;
-  var supSel = document.getElementById('hist-sup').value || 'Todos los supervisores';
-
-  var totalRac   = evalsFiltradas.reduce(function(a,e){return a+e.totalRacimos;},0);
-  var totalVerde = evalsFiltradas.reduce(function(a,e){return a+(e.racimos.verde||0);},0);
-  var pctVG      = totalRac>0 ? Math.round(totalVerde/totalRac*1000)/10 : 0;
-  var calA  = evalsFiltradas.filter(function(e){return e.cal.nota==='A';}).length;
-  var calB  = evalsFiltradas.filter(function(e){return e.cal.nota==='B';}).length;
-  var calCD = evalsFiltradas.filter(function(e){return ['C','D'].includes(e.cal.nota);}).length;
-
-  var pctColor  = pctVG>3 ? '#A32D2D' : '#3B6D11';
-  var pctBg     = pctVG>3 ? '#FCEBEB' : '#EAF3DE';
-  var pctBorder = pctVG>3 ? '#E24B4A' : '#639922';
-
-  var filas = evalsFiltradas.slice().reverse().map(function(e, i) {
-    var vCol   = e.pctVerde>3 ? '#A32D2D' : '#3B6D11';
-    var calBg  = e.cal.nota==='A' ? '#EAF3DE' : e.cal.nota==='B' ? '#FAEEDA' : '#FCEBEB';
-    var calCol = e.cal.nota==='A' ? '#3B6D11' : e.cal.nota==='B' ? '#854F0B' : '#A32D2D';
-    var rowBg  = i%2===0 ? '#ffffff' : '#f9f9f7';
-    var ciclo  = e.fueraCiclo
-      ? '<span style="background:#FCEBEB;color:#A32D2D;padding:1px 4px;border-radius:4px;font-size:9px;">+' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
-      : '<span style="color:#3B6D11;font-size:9px;">' + e.diasCiclo + 'd OK</span>';
-    return '<tr style="background:' + rowBg + ';">'
-      + '<td>' + e.fecha + '</td>'
-      + '<td><b>' + e.cosechero + '</b><br><span style="color:#999;font-size:8px;">' + e.cosechCod + '</span></td>'
-      + '<td style="color:#666;">' + e.supervisor.split(' ').map(function(w){return w[0];}).join('') + '</td>'
-      + '<td>' + e.lote + '<br>' + ciclo + '</td>'
-      + '<td style="text-align:center;">' + e.racimos.maduro + '</td>'
-      + '<td style="text-align:center;">' + e.racimos.sobremaduro + '</td>'
-      + '<td style="text-align:center;color:#534AB7;font-weight:600;">' + e.racimos.verde + '</td>'
-      + '<td style="text-align:center;">' + e.racimos.podrido + '</td>'
-      + '<td style="text-align:center;font-weight:700;">' + e.totalRacimos + '</td>'
-      + '<td style="text-align:center;font-weight:700;color:' + vCol + ';">' + e.pctVerde.toFixed(1) + '%</td>'
-      + '<td style="text-align:center;"><span style="background:' + calBg + ';color:' + calCol + ';padding:1px 6px;border-radius:6px;font-size:9px;font-weight:700;">' + e.cal.nota + '</span></td>'
-      + '</tr>';
-  }).join('');
-
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;padding:10px;background:#fff;}'
-    + 'table{width:100%;border-collapse:collapse;}'
-    + 'th{background:#3B6D11;color:#fff;padding:5px 4px;font-size:9px;text-align:center;}'
-    + 'td{border-bottom:0.5px solid #e8e8e8;padding:4px;font-size:9px;}'
-    + 'tr{page-break-inside:avoid;}'
-    + '</style></head><body>'
-    + '<div style="background:linear-gradient(135deg,#1e4a0e,#3B6D11);color:#fff;padding:14px 16px;border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'
-    + '<div><div style="font-size:16px;font-weight:800;letter-spacing:.05em;">PALMAGRANDE S.A.S</div>'
-    + '<div style="font-size:11px;opacity:.85;margin-top:2px;">Historial de evaluaciones de cosecha</div>'
-    + '<div style="font-size:10px;opacity:.7;margin-top:4px;">' + supSel + ' | ' + desde + ' al ' + hasta + '</div></div>'
-    + '<div style="font-size:11px;opacity:.7;text-align:right;">' + evalsFiltradas.length + ' evaluaciones</div>'
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">'
-    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;">' + evalsFiltradas.length + '</div><div style="font-size:9px;color:#666;margin-top:2px;">Evaluaciones</div></div>'
-    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;">' + totalRac + '</div><div style="font-size:9px;color:#666;margin-top:2px;">Racimos</div></div>'
-    + '<div style="background:' + pctBg + ';border:1px solid ' + pctBorder + ';border-radius:6px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:' + pctColor + ';">' + pctVG.toFixed(1) + '%</div><div style="font-size:9px;color:' + pctColor + ';margin-top:2px;">% Verde global</div></div>'
-    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:13px;font-weight:700;"><span style="color:#3B6D11;">A:' + calA + '</span> <span style="color:#854F0B;">B:' + calB + '</span> <span style="color:#A32D2D;">C/D:' + calCD + '</span></div><div style="font-size:9px;color:#666;margin-top:4px;">Calificaciones</div></div>'
-    + '</div>'
-    + '<table><thead><tr>'
-    + '<th>Fecha</th><th>Cosechero</th><th>Sup.</th><th>Lote</th>'
-    + '<th>Maduro</th><th>Sobre.</th><th style="color:#b8b0ff;">Verde</th><th>Podrido</th>'
-    + '<th>Total</th><th>% Verde</th><th>Cal.</th>'
-    + '</tr></thead><tbody>' + filas + '</tbody></table>'
-    + '<div style="margin-top:10px;padding-top:8px;border-top:0.5px solid #e0e0e0;display:flex;justify-content:space-between;font-size:9px;color:#999;">'
-    + '<span>Palma Grande S.A.S - Sistema de supervision de cosecha</span>'
-    + '<span>Generado: ' + new Date().toLocaleDateString('es-CO') + '</span>'
-    + '</div></body></html>';
-
-  var contenedor = document.createElement('div');
-  contenedor.innerHTML = html;
-  contenedor.style.cssText = 'position:fixed;left:-9999px;top:0;width:297mm;background:#fff;';
-  document.body.appendChild(contenedor);
+  var supSel = document.getElementById('hist-sup').value || '';
+  var calSel = document.getElementById('hist-cal').value || '';
 
   var btn = event.target.closest('button');
   var txtOrig = btn.innerHTML;
-  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando PDF...';
   btn.disabled = true;
 
-  html2pdf().set({
-    margin: [8,8,8,8],
-    filename: 'Cosecha_' + desde + '_' + hasta + '.pdf',
-    image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff', scrollY: 0 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-  }).from(contenedor.firstChild).save()
-    .then(function() {
-      document.body.removeChild(contenedor);
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
-      if (navigator.share) {
-        navigator.share({
-          title: 'Historial Cosecha - Palma Grande S.A.S',
-          text: 'Historial ' + desde + ' al ' + hasta + ' | Evals: ' + evalsFiltradas.length + ' | Racimos: ' + totalRac + ' | % Verde: ' + pctVG.toFixed(1) + '% | PDF descargado.'
-        }).catch(function() {});
-      }
+  // Generar PDF en el servidor GAS
+  fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'generarPDF',
+      params: { desde: desde, hasta: hasta, supervisor: supSel, cal: calSel }
     })
-    .catch(function(err) {
-      document.body.removeChild(contenedor);
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
-      alert('Error al generar PDF. Intenta de nuevo.');
-    });
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.innerHTML = txtOrig;
+    btn.disabled = false;
+    if (data.ok && data.url) {
+      // Abrir URL de descarga directa
+      window.open(data.url, '_blank');
+      // Compartir por WhatsApp si disponible
+      if (navigator.share) {
+        setTimeout(function() {
+          navigator.share({
+            title: 'Historial Cosecha - Palma Grande S.A.S',
+            text: 'Historial ' + desde + ' al ' + hasta + ' | ' + evalsFiltradas.length + ' evals',
+            url: data.url
+          }).catch(function() {});
+        }, 1000);
+      }
+    } else {
+      alert('Error al generar PDF: ' + (data.error || 'Error desconocido'));
+    }
+  })
+  .catch(function(err) {
+    btn.innerHTML = txtOrig;
+    btn.disabled = false;
+    alert('Error de conexión. Verifica tu señal e intenta de nuevo.');
+  });
 }
+
 
 function rpOnSupChange() {
   var idx = document.getElementById('rp-sup').value;
