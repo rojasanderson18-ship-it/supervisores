@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Supervisión Calidad Cosecha — Palma Grande</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3B6D11">
 <meta name="mobile-web-app-capable" content="yes">
@@ -195,6 +196,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast.show{opacity:1;}
 .sync-banner{display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--b600);color:#fff;padding:8px 16px;border-radius:var(--rr);font-size:12px;font-weight:500;z-index:1000;align-items:center;gap:6px;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+/* Reporte */
+.reporte-wrap{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);overflow:hidden;margin-bottom:.875rem;}
+.reporte-header{background:linear-gradient(135deg,#1e4a0e,#3B6D11);padding:1.25rem;color:#fff;}
+.reporte-titulo{font-size:16px;font-weight:700;margin-bottom:2px;}
+.reporte-sub{font-size:12px;opacity:.8;}
+.reporte-body{padding:1.1rem;}
+.reporte-seccion{margin-bottom:1rem;}
+.reporte-seccion-titulo{font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;display:flex;align-items:center;gap:5px;}
+.reporte-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.reporte-stat{background:var(--bg2);border-radius:var(--rr);padding:10px 12px;}
+.reporte-stat-val{font-size:22px;font-weight:700;color:var(--tx);}
+.reporte-stat-lbl{font-size:11px;color:var(--tx2);margin-top:2px;}
+.reporte-mad-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
+.reporte-mad-item{border-radius:var(--rr);padding:8px 10px;text-align:center;}
+.reporte-mad-val{font-size:18px;font-weight:700;}
+.reporte-mad-pct{font-size:11px;font-weight:600;}
+.reporte-mad-lbl{font-size:10px;margin-top:2px;}
+.reporte-cal{border-radius:var(--rrl);padding:1rem;text-align:center;margin-bottom:1rem;}
+.reporte-cal-nota{font-size:48px;font-weight:800;line-height:1;}
+.reporte-cal-label{font-size:14px;font-weight:600;margin-top:4px;}
+.reporte-cal-desc{font-size:12px;margin-top:4px;opacity:.85;}
+.reporte-param-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:.5px solid var(--bd);}
+.reporte-param-row:last-child{border-bottom:none;}
+.reporte-param-nombre{font-size:13px;color:var(--tx);}
+.reporte-param-stars{display:flex;gap:2px;}
+.reporte-star{width:16px;height:16px;border-radius:3px;background:var(--bg2);}
+.reporte-star.on{background:var(--g400);}
+.reporte-obs{background:var(--bg2);border-radius:var(--rr);padding:10px 12px;font-size:13px;color:var(--tx2);font-style:italic;}
+.reporte-footer{background:var(--bg2);padding:.75rem 1.1rem;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--tx3);}
+@media print{.tabs,.bsave,button{display:none!important;}.reporte-wrap{border:none;}}
 @keyframes fadeout{0%{opacity:1}80%{opacity:1}100%{opacity:0}}
 .online-bar-show{display:flex!important;animation:fadeout 3s forwards;}
 /* Personal */
@@ -249,6 +280,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="tab" onclick="showTab('comparativa',this)"><i class="ti ti-arrows-diff"></i> Comparativa</button>
     <button class="tab" onclick="showTab('historial',this)"><i class="ti ti-list"></i> Historial</button>
     <button class="tab" onclick="showTab('personal',this)"><i class="ti ti-users"></i> Personal</button>
+    <button class="tab" onclick="showTab('reportes',this)"><i class="ti ti-file-text"></i> Reportes</button>
   </div>
 
   <!-- ══ REGISTRO ══ -->
@@ -429,7 +461,54 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- ══ HISTORIAL ══ -->
   <div class="sec" id="sec-historial">
-    <div class="htbl">
+
+    <!-- Filtros -->
+    <div class="card" style="padding:.875rem 1.25rem;margin-bottom:.875rem;">
+      <div class="frow" style="margin-bottom:0;">
+        <div class="fg">
+          <label>Desde</label>
+          <input type="date" id="hist-desde" onchange="filtrarHistorial()">
+        </div>
+        <div class="fg">
+          <label>Hasta</label>
+          <input type="date" id="hist-hasta" onchange="filtrarHistorial()">
+        </div>
+      </div>
+      <div class="frow" style="margin-top:8px;margin-bottom:0;">
+        <div class="fg">
+          <label>Supervisor</label>
+          <select id="hist-sup" onchange="filtrarHistorial()">
+            <option value="">Todos</option>
+            <option value="Juan Carlos Oviedo">Juan Carlos Oviedo</option>
+            <option value="Brayan Pérez">Brayan Pérez</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Calificación</label>
+          <select id="hist-cal" onchange="filtrarHistorial()">
+            <option value="">Todas</option>
+            <option value="A">A — Excelente / Muy bueno</option>
+            <option value="B">B — Aceptable</option>
+            <option value="C">C — Deficiente</option>
+            <option value="D">D — Crítico</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+        <span id="hist-count" style="font-size:12px;color:var(--tx2);">— evaluaciones</span>
+        <div style="display:flex;gap:6px;">
+          <button onclick="limpiarFiltrosHistorial()" style="padding:6px 12px;background:var(--bg2);border:.5px solid var(--bd2);border-radius:var(--rr);font-size:12px;color:var(--tx2);cursor:pointer;">
+            <i class="ti ti-x" style="font-size:12px;vertical-align:-1px"></i> Limpiar
+          </button>
+          <button onclick="exportarHistorialPDF()" style="padding:6px 12px;background:var(--r600);color:#fff;border:none;border-radius:var(--rr);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+            <i class="ti ti-file-type-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="htbl" id="hist-tabla">
       <div class="hhdr">
         <span>Cosechero</span><span>Supervisor</span><span>Lote · Palma · Ciclo</span>
         <span>Racimos por madurez</span><span>Total</span><span>% Verde</span><span>Calif.</span>
@@ -457,6 +536,61 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
     <!-- Listado por supervisor -->
     <div id="personal-list"></div>
+  </div>
+
+  <!-- ══ REPORTES ══ -->
+  <div class="sec" id="sec-reportes">
+
+    <div class="card">
+      <div class="stitle" style="margin:0 0 .75rem;"><i class="ti ti-file-text"></i> Generar resumen</div>
+      <div class="frow">
+        <div class="fg">
+          <label>Supervisor</label>
+          <select id="rp-sup" onchange="rpOnSupChange()">
+            <option value="">Seleccionar...</option>
+            <option value="0">Juan Carlos Oviedo</option>
+            <option value="1">Brayan Pérez</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Cosechero</label>
+          <select id="rp-cosech" disabled>
+            <option value="">— elige supervisor —</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label>Período</label>
+          <select id="rp-periodo" onchange="rpOnPeriodoChange()">
+            <option value="">Seleccionar...</option>
+            <option value="dia">Día específico</option>
+            <option value="semana">Semana</option>
+          </select>
+        </div>
+        <div class="fg" id="rp-fecha-wrap" style="display:none;">
+          <label id="rp-fecha-lbl">Fecha</label>
+          <input type="date" id="rp-fecha">
+        </div>
+      </div>
+      <button class="bsave" onclick="generarReporte()" style="margin-top:.5rem;">
+        <i class="ti ti-file-report"></i> Generar resumen
+      </button>
+    </div>
+
+    <!-- Vista previa del reporte -->
+    <div id="rp-preview" style="display:none;">
+      <div id="rp-contenido"></div>
+      <div style="display:flex;gap:8px;margin-top:.875rem;">
+        <button onclick="descargarPDF()" style="flex:1;padding:11px;background:var(--r600);color:#fff;border:none;border-radius:var(--rr);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i class="ti ti-file-type-pdf"></i> Descargar PDF
+        </button>
+        <button onclick="compartirReporte()" style="flex:1;padding:11px;background:var(--b600);color:#fff;border:none;border-radius:var(--rr);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i class="ti ti-brand-whatsapp"></i> Compartir
+        </button>
+      </div>
+    </div>
+
   </div>
 
 </div><!-- /.app -->
@@ -615,7 +749,7 @@ function calcCiclo() {
     txt.innerHTML = '<strong>' + label + '</strong> · <strong>' + dias + ' días</strong> desde última cosecha · Dentro de ciclo (máx ' + max + ' días)';
   } else {
     banner.className = 'ciclo-banner ciclo-warn';
-    txt.innerHTML = '<strong>' + label + '</strong> · <strong>' + dias + ' días</strong> · <strong>⚠ FUERA DE CICLO</strong> — excede ' + max + ' días por ' + (dias - max) + ' día' + (dias - max > 1 ? 's' : '');
+    txt.innerHTML = '<strong>' + label + '</strong> · <strong>' + dias + ' días</strong> · <strong> FUERA DE CICLO</strong> — excede ' + max + ' días por ' + (dias - max) + ' día' + (dias - max > 1 ? 's' : '');
   }
 }
 
@@ -956,7 +1090,7 @@ function renderProgSup() {
     html += '<div class="alert-banner ' + (done ? 'alert-ok' : 'alert-warn') + '" style="margin-bottom:6px;">'
       + '<i class="ti ' + (done ? 'ti-circle-check' : 'ti-alert-circle') + '"></i>'
       + '<span style="flex:1"><strong>' + sup + '</strong> — ' + cnt + ' de 4 evaluaciones hoy</span>'
-      + '<span style="font-weight:600">' + (done ? '✓ Meta cumplida' : 'Faltan ' + (4 - cnt)) + '</span>'
+      + '<span style="font-weight:600">' + (done ? ' Meta cumplida' : 'Faltan ' + (4 - cnt)) + '</span>'
       + '</div>';
   });
   document.getElementById('prog-sup-wrap').innerHTML = html;
@@ -990,7 +1124,7 @@ function upd() {
     var done = cnt >= 4;
     pdHtml += '<div style="margin-bottom:10px;">'
       + '<div class="prog-hdr"><span class="prog-lbl"><strong>' + sup + '</strong></span>'
-      + '<span style="font-size:12px;font-weight:600;color:' + (done ? 'var(--g600)' : 'var(--a600)') + '">' + cnt + '/4 ' + (done ? '✓' : '') + '</span></div>'
+      + '<span style="font-size:12px;font-weight:600;color:' + (done ? 'var(--g600)' : 'var(--a600)') + '">' + cnt + '/4 ' + (done ? '' : '') + '</span></div>'
       + '<div class="prog-track"><div class="prog-fill ' + (done ? 'done' : '') + '" style="width:' + pct + '%"></div></div></div>';
   });
   document.getElementById('prog-dashboard').innerHTML = pdHtml;
@@ -1038,7 +1172,7 @@ function upd() {
         + '<div style="flex:1;background:' + (pctVmalo ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:8px 10px;border:.5px solid ' + (pctVmalo ? 'var(--r400)' : 'var(--g400)') + ';">'
         + '<div style="font-size:10px;font-weight:600;color:' + (pctVmalo ? 'var(--r600)' : 'var(--g600)') + ';">% VERDE</div>'
         + '<div style="font-size:20px;font-weight:700;color:' + (pctVmalo ? 'var(--r600)' : 'var(--g600)') + ';">' + pctV.toFixed(1) + '%</div>'
-        + '<div style="font-size:10px;color:' + (pctVmalo ? 'var(--r600)' : 'var(--g600)') + ';">' + (pctVmalo ? '⚠ Supera 3%' : 'Dentro del límite') + '</div></div>'
+        + '<div style="font-size:10px;color:' + (pctVmalo ? 'var(--r600)' : 'var(--g600)') + ';">' + (pctVmalo ? ' Supera 3%' : 'Dentro del límite') + '</div></div>'
         + fueraBadge + '</div>'
         + '<div class="stitle" style="margin:.25rem 0 .35rem;font-size:10px;"><i class="ti ti-apple"></i> Racimos por madurez</div>'
         + '<div class="mad-dist">'
@@ -1102,27 +1236,10 @@ function upd() {
     cw.innerHTML = h;
   }
 
-  // Historial
-  var hb = document.getElementById('hbody');
-  if (!evals.length) { hb.innerHTML = '<div class="empty">Sin evaluaciones registradas</div>'; return; }
-  var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
-  hb.innerHTML = evals.slice().reverse().map(function(e) {
-    var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
-      .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
-    var cicloTag = e.fueraCiclo
-      ? '<span class="tag tag-bad">⚠ +' + (e.diasCiclo - e.maxCiclo) + 'd fuera</span>'
-      : '<span class="tag tag-ok">' + e.diasCiclo + 'd ✓</span>';
-    var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
-    return '<div class="hrow">'
-      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
-      + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
-      + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma) + '<br>' + cicloTag + '</span>'
-      + '<span><div class="mini-pills">' + pills + '</div></span>'
-      + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
-      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
-      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
-      + '</div>';
-  }).join('');
+  // Historial — manejado por filtrarHistorial()
+  if (document.getElementById('sec-historial').classList.contains('active')) {
+    filtrarHistorial();
+  }
 }
 
 // ══ OFFLINE / COLA LOCAL ═════════════════════════════════════════════════════
@@ -1372,14 +1489,936 @@ function sincPersonalGAS() {
   } catch(e) { /* ignorar — no afecta el funcionamiento */ }
 })();
 
+// ══ REPORTES ═════════════════════════════════════════════════════════════════
+
+function rpOnSupChange() {
+  var idx = document.getElementById('rp-sup').value;
+  var sel = document.getElementById('rp-cosech');
+  if (idx === '') { sel.innerHTML = '<option value="">— elige supervisor —</option>'; sel.disabled = true; return; }
+  sel.disabled = false;
+  var activos = personal.filter(function(p) { return p.supIdx === parseInt(idx); });
+  sel.innerHTML = '<option value="">Todos los cosecheros</option>';
+  activos.forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.cod; o.textContent = p.cod + ' — ' + p.nombre;
+    sel.appendChild(o);
+  });
+}
+
+function rpOnPeriodoChange() {
+  var periodo = document.getElementById('rp-periodo').value;
+  var wrap    = document.getElementById('rp-fecha-wrap');
+  var lbl     = document.getElementById('rp-fecha-lbl');
+  if (!periodo) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  lbl.textContent = periodo === 'dia' ? 'Fecha' : 'Cualquier fecha de la semana';
+  document.getElementById('rp-fecha').value = new Date().toISOString().split('T')[0];
+}
+
+function semanaDeEval(fechaStr) {
+  var d = new Date(fechaStr);
+  if (isNaN(d)) return null;
+  var thu = new Date(d);
+  thu.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 3);
+  var year = thu.getFullYear();
+  var week = Math.ceil(((thu - new Date(year, 0, 4)) / 864e5 + 1) / 7);
+  return year + '-S' + String(week).padStart(2, '0');
+}
+
+function inicioFinSemana(fechaStr) {
+  var d = new Date(fechaStr);
+  var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+  var fmt = function(x) { return x.toISOString().split('T')[0]; };
+  return { inicio: fmt(lunes), fin: fmt(domingo) };
+}
+
+function generarReporte() {
+  var supIdx  = document.getElementById('rp-sup').value;
+  var cosechCod = document.getElementById('rp-cosech').value;
+  var periodo = document.getElementById('rp-periodo').value;
+  var fecha   = document.getElementById('rp-fecha').value;
+
+  if (!periodo || !fecha) { alert('Selecciona período y fecha.'); return; }
+
+  // Filtrar evaluaciones
+  var evFiltradas = evals.filter(function(e) {
+    var supOk = supIdx === '' || e.supIdx === parseInt(supIdx);
+    var cosOk = !cosechCod || e.cosechCod === cosechCod;
+    var fechaOk;
+    if (periodo === 'dia') {
+      fechaOk = e.fecha === fecha;
+    } else {
+      fechaOk = semanaDeEval(e.fecha) === semanaDeEval(fecha);
+    }
+    return supOk && cosOk && fechaOk;
+  });
+
+  if (evFiltradas.length === 0) {
+    alert('No hay evaluaciones para los filtros seleccionados.');
+    return;
+  }
+
+  // Si es por cosechero individual
+  if (cosechCod) {
+    renderReporteCosechero(cosechCod, evFiltradas, periodo, fecha);
+  } else {
+    renderReporteGrupal(evFiltradas, periodo, fecha, parseInt(supIdx));
+  }
+
+  document.getElementById('rp-preview').style.display = 'block';
+  document.getElementById('rp-preview').scrollIntoView({behavior:'smooth'});
+}
+
+function renderReporteCosechero(cod, evs, periodo, fecha) {
+  var p = personal.find(function(x) { return x.cod === cod; });
+  var nombre = p ? p.nombre : cod;
+  var sup    = evs.length > 0 ? evs[0].supervisor : '—';
+
+  var totRac  = evs.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
+  var racsAcum = {maduro:0, sobremaduro:0, verde:0, podrido:0};
+  MAD_KEYS.forEach(function(k) {
+    racsAcum[k] = evs.reduce(function(a,e) { return a + (e.racimos[k]||0); }, 0);
+  });
+  var pctVerde = totRac > 0 ? Math.round(racsAcum.verde / totRac * 1000) / 10 : 0;
+  var cal      = calFromPct(pctVerde);
+
+  // Promedios parámetros
+  var promParams = {};
+  CRITERIOS.forEach(function(c) {
+    promParams[c.id] = evs.length > 0
+      ? Math.round(evs.reduce(function(a,e) { return a + (e.pts[c.id]||0); }, 0) / evs.length * 10) / 10
+      : 0;
+  });
+
+  // Observaciones
+  var obs = evs.filter(function(e) { return e.obs && e.obs.trim(); }).map(function(e) { return e.obs.trim(); });
+
+  // Período label
+  var periodoLabel;
+  if (periodo === 'dia') {
+    periodoLabel = 'Fecha: ' + fecha;
+  } else {
+    var sf = inicioFinSemana(fecha);
+    periodoLabel = 'Semana del ' + sf.inicio + ' al ' + sf.fin;
+  }
+
+  var calBg  = cal.nota === 'A' ? '#EAF3DE' : cal.nota === 'B' ? '#FAEEDA' : '#FCEBEB';
+  var calCol = cal.nota === 'A' ? '#3B6D11'  : cal.nota === 'B' ? '#854F0B'  : '#A32D2D';
+
+  var starsHtml = function(val) {
+    var h = '';
+    for (var i = 1; i <= 5; i++) h += '<div class="reporte-star' + (i <= val ? ' on' : '') + '"></div>';
+    return h;
+  };
+
+  var madItems = [
+    {k:'maduro',bg:'#EAF3DE',col:'#3B6D11',lbl:'Maduro'},
+    {k:'sobremaduro',bg:'#FAEEDA',col:'#854F0B',lbl:'Sobremaduro'},
+    {k:'verde',bg:'#EEEDFE',col:'#534AB7',lbl:'Verde'},
+    {k:'podrido',bg:'#FCEBEB',col:'#A32D2D',lbl:'Podrido'},
+  ];
+
+  var html = '<div class="reporte-wrap">'
+    + '<div class="reporte-header">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem;">'
+    + '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">' + cod + '</div>'
+    + '<div><div class="reporte-titulo">' + nombre + '</div>'
+    + '<div class="reporte-sub">Supervisor: ' + sup + '</div></div></div>'
+    + '<div class="reporte-sub">' + periodoLabel + ' · ' + evs.length + ' evaluación' + (evs.length > 1 ? 'es' : '') + '</div>'
+    + '</div>'
+    + '<div class="reporte-body">'
+
+    // Calificación
+    + '<div class="reporte-cal" style="background:' + calBg + ';margin-bottom:1rem;">'
+    + '<div class="reporte-cal-nota" style="color:' + calCol + '">' + cal.nota + '</div>'
+    + '<div class="reporte-cal-label" style="color:' + calCol + '">' + cal.label + '</div>'
+    + '<div class="reporte-cal-desc" style="color:' + calCol + '">' + pctVerde.toFixed(1) + '% de racimos verdes</div>'
+    + '</div>'
+
+    // Racimos
+    + '<div class="reporte-seccion">'
+    + '<div class="reporte-seccion-titulo"><i class="ti ti-stack"></i> Racimos evaluados — Total: ' + totRac + '</div>'
+    + '<div class="reporte-mad-grid">'
+    + madItems.map(function(m) {
+        var pct = totRac > 0 ? Math.round(racsAcum[m.k]/totRac*1000)/10 : 0;
+        return '<div class="reporte-mad-item" style="background:' + m.bg + ';">'
+          + '<div class="reporte-mad-val" style="color:' + m.col + '">' + racsAcum[m.k] + '</div>'
+          + '<div class="reporte-mad-pct" style="color:' + m.col + '">' + pct.toFixed(1) + '%</div>'
+          + '<div class="reporte-mad-lbl" style="color:' + m.col + '">' + m.lbl + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div></div>'
+
+    // Parámetros
+    + '<div class="reporte-seccion">'
+    + '<div class="reporte-seccion-titulo"><i class="ti ti-checklist"></i> Parámetros de calidad</div>'
+    + CRITERIOS.map(function(c) {
+        var v = promParams[c.id];
+        return '<div class="reporte-param-row">'
+          + '<span class="reporte-param-nombre">' + c.n + '</span>'
+          + '<div style="display:flex;align-items:center;gap:6px;">'
+          + '<div class="reporte-param-stars">' + starsHtml(Math.round(v)) + '</div>'
+          + '<span style="font-size:13px;font-weight:600;color:' + (v>=4?'var(--g600)':v>=3?'var(--a600)':'var(--r600)') + '">' + v.toFixed(1) + '</span>'
+          + '</div></div>';
+      }).join('')
+    + '</div>'
+
+    // Observaciones
+    + (obs.length > 0
+      ? '<div class="reporte-seccion"><div class="reporte-seccion-titulo"><i class="ti ti-note"></i> Observaciones</div>'
+        + obs.map(function(o) { return '<div class="reporte-obs">' + o + '</div>'; }).join('<div style="height:6px"></div>')
+        + '</div>'
+      : '')
+
+    + '</div>'
+    + '<div class="reporte-footer">'
+    + '<span>Palma Grande S.A.S</span>'
+    + '<span>Generado: ' + new Date().toLocaleDateString('es-CO') + '</span>'
+    + '</div>'
+    + '</div>';
+
+  document.getElementById('rp-contenido').innerHTML = html;
+}
+
+function renderReporteGrupal(evs, periodo, fecha, supIdx) {
+  var sup = !isNaN(supIdx) && supIdx >= 0 ? SUPS[supIdx] : 'Todos los supervisores';
+  var periodoLabel = periodo === 'dia' ? 'Fecha: ' + fecha
+    : (function() { var sf = inicioFinSemana(fecha); return 'Semana ' + sf.inicio + ' al ' + sf.fin; })();
+
+  // Agrupar por cosechero
+  var porCos = {};
+  evs.forEach(function(e) {
+    if (!porCos[e.cosechCod]) porCos[e.cosechCod] = {nombre:e.cosechero, evals:[]};
+    porCos[e.cosechCod].evals.push(e);
+  });
+
+  var filas = Object.keys(porCos).map(function(cod) {
+    var info = porCos[cod];
+    var totRac = info.evals.reduce(function(a,e) { return a+e.totalRacimos; },0);
+    var verdes = info.evals.reduce(function(a,e) { return a+(e.racimos.verde||0); },0);
+    var pct    = totRac > 0 ? Math.round(verdes/totRac*1000)/10 : 0;
+    var cal    = calFromPct(pct);
+    return {cod, nombre:info.nombre, evals:info.evals.length, totRac, pct, cal};
+  }).sort(function(a,b) { return a.pct - b.pct; });
+
+  var html = '<div class="reporte-wrap">'
+    + '<div class="reporte-header">'
+    + '<div class="reporte-titulo">Resumen de cosecha</div>'
+    + '<div class="reporte-sub">' + sup + ' · ' + periodoLabel + '</div>'
+    + '<div class="reporte-sub">' + evs.length + ' evaluaciones · ' + filas.length + ' cosecheros</div>'
+    + '</div>'
+    + '<div class="reporte-body">'
+    + '<div class="reporte-seccion">'
+    + '<div class="reporte-seccion-titulo"><i class="ti ti-users"></i> Cosecheros evaluados</div>'
+    + filas.map(function(f) {
+        var calBg  = f.cal.nota==='A'?'#EAF3DE':f.cal.nota==='B'?'#FAEEDA':'#FCEBEB';
+        var calCol = f.cal.nota==='A'?'#3B6D11':f.cal.nota==='B'?'#854F0B':'#A32D2D';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--bd);">'
+          + '<div style="width:32px;height:32px;border-radius:50%;background:' + calBg + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:' + calCol + ';flex-shrink:0;">' + f.cal.nota + '</div>'
+          + '<div style="flex:1;">'
+          + '<div style="font-size:13px;font-weight:500;">' + f.nombre + ' <span style="font-size:11px;color:var(--tx3)">(' + f.cod + ')</span></div>'
+          + '<div style="font-size:11px;color:var(--tx2);">' + f.totRac + ' racimos · ' + f.evals + ' eval' + (f.evals>1?'s':'') + '</div>'
+          + '</div>'
+          + '<div style="font-size:16px;font-weight:700;color:' + calCol + '">' + f.pct.toFixed(1) + '%<div style="font-size:10px;text-align:center;font-weight:400;color:var(--tx3)">verde</div></div>'
+          + '</div>';
+      }).join('')
+    + '</div></div>'
+    + '<div class="reporte-footer"><span>Palma Grande S.A.S</span><span>' + new Date().toLocaleDateString('es-CO') + '</span></div>'
+    + '</div>';
+
+  document.getElementById('rp-contenido').innerHTML = html;
+}
+
+function descargarPDF() {
+  var elemento = document.getElementById('rp-contenido');
+  if (!elemento) return;
+
+  // Nombre del archivo
+  var cosechEl = document.getElementById('rp-cosech');
+  var cosechNombre = cosechEl && cosechEl.value
+    ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
+    : 'Grupo';
+  var fecha = document.getElementById('rp-fecha').value || new Date().toISOString().split('T')[0];
+  var periodo = document.getElementById('rp-periodo').value;
+  var nombreArchivo = 'Cosecha_' + cosechNombre.replace(/ /g,'_') + '_' + fecha + '.pdf';
+
+  var btn = event.target.closest('button');
+  var txtOriginal = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
+  btn.disabled = true;
+
+  var opt = {
+    margin:       [8, 8, 8, 8],
+    filename:     nombreArchivo,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true, logging: false },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak:    { mode: 'avoid-all' }
+  };
+
+  html2pdf().set(opt).from(elemento).save()
+    .then(function() {
+      btn.innerHTML = txtOriginal;
+      btn.disabled = false;
+    })
+    .catch(function(e) {
+      console.error('PDF error:', e);
+      btn.innerHTML = txtOriginal;
+      btn.disabled = false;
+      alert('Error al generar PDF. Intenta de nuevo.');
+    });
+}
+
+function compartirReporte() {
+  if (navigator.share) {
+    var texto = document.getElementById('rp-contenido').innerText;
+    var cosechEl = document.getElementById('rp-cosech');
+    var nombre = cosechEl && cosechEl.value
+      ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
+      : 'Grupo';
+    navigator.share({
+      title: 'Reporte Cosecha — ' + nombre,
+      text: ' Reporte de calidad cosecha\nPalma Grande S.A.S\n\n' + texto
+    }).catch(function() {});
+  } else {
+    window.print();
+  }
+}
+
+// ══ HISTORIAL FILTRADO ═══════════════════════════════════════════════════════
+var evalsFiltradas = [];
+
+function initHistorial() {
+  var hoy = new Date().toISOString().split('T')[0];
+  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-hasta').value = hoy;
+  filtrarHistorial();
+}
+
+function filtrarHistorial() {
+  var desde = document.getElementById('hist-desde').value;
+  var hasta = document.getElementById('hist-hasta').value;
+  var sup   = document.getElementById('hist-sup').value;
+  var cal   = document.getElementById('hist-cal').value;
+
+  evalsFiltradas = evals.filter(function(e) {
+    var fechaOk = (!desde || e.fecha >= desde) && (!hasta || e.fecha <= hasta);
+    var supOk   = !sup || e.supervisor === sup;
+    var calOk   = !cal || e.cal.nota === cal;
+    return fechaOk && supOk && calOk;
+  });
+
+  renderHistorialFiltrado();
+}
+
+function limpiarFiltrosHistorial() {
+  document.getElementById('hist-sup').value = '';
+  document.getElementById('hist-cal').value = '';
+  var hoy = new Date().toISOString().split('T')[0];
+  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-hasta').value = hoy;
+  filtrarHistorial();
+}
+
+function renderHistorialFiltrado() {
+  var hb = document.getElementById('hbody');
+  var count = document.getElementById('hist-count');
+  count.textContent = evalsFiltradas.length + ' evaluación' + (evalsFiltradas.length !== 1 ? 'es' : '');
+
+  if (!evalsFiltradas.length) {
+    hb.innerHTML = '<div class="empty">Sin evaluaciones para los filtros seleccionados</div>';
+    return;
+  }
+
+  var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
+  hb.innerHTML = evalsFiltradas.slice().reverse().map(function(e) {
+    var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
+      .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
+    var cicloTag = e.fueraCiclo
+      ? '<span class="tag tag-bad"> +' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
+      : '<span class="tag tag-ok">' + e.diasCiclo + 'd </span>';
+    var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
+    return '<div class="hrow">'
+      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
+      + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
+      + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma||'') + '<br>' + cicloTag + '</span>'
+      + '<span><div class="mini-pills">' + pills + '</div></span>'
+      + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
+      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
+      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
+      + '</div>';
+  }).join('');
+}
+
+function exportarHistorialPDF() {
+  if (!evalsFiltradas.length) { alert('No hay evaluaciones para exportar.'); return; }
+
+  var desde  = document.getElementById('hist-desde').value;
+  var hasta  = document.getElementById('hist-hasta').value;
+  var supSel = document.getElementById('hist-sup').value || 'Todos los supervisores';
+
+  var totalRac   = evalsFiltradas.reduce(function(a,e){return a+e.totalRacimos;},0);
+  var totalVerde = evalsFiltradas.reduce(function(a,e){return a+(e.racimos.verde||0);},0);
+  var pctVG      = totalRac>0 ? Math.round(totalVerde/totalRac*1000)/10 : 0;
+  var calA  = evalsFiltradas.filter(function(e){return e.cal.nota==='A';}).length;
+  var calB  = evalsFiltradas.filter(function(e){return e.cal.nota==='B';}).length;
+  var calCD = evalsFiltradas.filter(function(e){return ['C','D'].includes(e.cal.nota);}).length;
+
+  var pctColor  = pctVG>3 ? '#A32D2D' : '#3B6D11';
+  var pctBg     = pctVG>3 ? '#FCEBEB' : '#EAF3DE';
+  var pctBorder = pctVG>3 ? '#E24B4A' : '#639922';
+
+  var filas = evalsFiltradas.slice().reverse().map(function(e, i) {
+    var vCol   = e.pctVerde>3 ? '#A32D2D' : '#3B6D11';
+    var calBg  = e.cal.nota==='A' ? '#EAF3DE' : e.cal.nota==='B' ? '#FAEEDA' : '#FCEBEB';
+    var calCol = e.cal.nota==='A' ? '#3B6D11' : e.cal.nota==='B' ? '#854F0B' : '#A32D2D';
+    var rowBg  = i%2===0 ? '#ffffff' : '#f9f9f7';
+    var ciclo  = e.fueraCiclo
+      ? '<span style="background:#FCEBEB;color:#A32D2D;padding:1px 4px;border-radius:4px;font-size:9px;">+' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
+      : '<span style="color:#3B6D11;font-size:9px;">' + e.diasCiclo + 'd OK</span>';
+    return '<tr style="background:' + rowBg + ';">'
+      + '<td style="padding:5px 6px;font-size:10px;color:#444;">' + e.fecha + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;"><b>' + e.cosechero + '</b><br><span style="color:#999;font-size:9px;">' + e.cosechCod + '</span></td>'
+      + '<td style="padding:5px 6px;font-size:9px;color:#666;">' + e.supervisor.split(' ').map(function(w){return w[0];}).join('') + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;">' + e.lote + '<br>' + ciclo + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;text-align:center;">' + e.racimos.maduro + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;text-align:center;">' + e.racimos.sobremaduro + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;text-align:center;color:#534AB7;font-weight:600;">' + e.racimos.verde + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;text-align:center;">' + e.racimos.podrido + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;text-align:center;font-weight:700;">' + e.totalRacimos + '</td>'
+      + '<td style="padding:5px 6px;font-size:10px;text-align:center;font-weight:700;color:' + vCol + ';">' + e.pctVerde.toFixed(1) + '%</td>'
+      + '<td style="padding:5px 6px;text-align:center;"><span style="background:' + calBg + ';color:' + calCol + ';padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">' + e.cal.nota + '</span></td>'
+      + '</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;padding:12px;background:#fff;}'
+    + 'table{width:100%;border-collapse:collapse;}th{background:#3B6D11;color:#fff;padding:7px 6px;font-size:10px;text-align:center;}'
+    + 'td{border-bottom:0.5px solid #e8e8e8;}</style></head><body>'
+    + '<div style="background:linear-gradient(135deg,#1e4a0e,#3B6D11);color:#fff;padding:14px 16px;border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'
+    + '<div><div style="font-size:16px;font-weight:800;letter-spacing:.05em;">PALMAGRANDE S.A.S</div>'
+    + '<div style="font-size:11px;opacity:.85;margin-top:2px;">Historial de evaluaciones de cosecha</div>'
+    + '<div style="font-size:10px;opacity:.7;margin-top:4px;">' + supSel + ' | ' + desde + ' al ' + hasta + '</div></div>'
+    + '<div style="font-size:11px;opacity:.7;text-align:right;">' + evalsFiltradas.length + ' evaluaciones</div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">'
+    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;">' + evalsFiltradas.length + '</div><div style="font-size:9px;color:#666;margin-top:2px;">Evaluaciones</div></div>'
+    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;">' + totalRac + '</div><div style="font-size:9px;color:#666;margin-top:2px;">Racimos</div></div>'
+    + '<div style="background:' + pctBg + ';border:1px solid ' + pctBorder + ';border-radius:6px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:' + pctColor + ';">' + pctVG.toFixed(1) + '%</div><div style="font-size:9px;color:' + pctColor + ';margin-top:2px;">% Verde global</div></div>'
+    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:13px;font-weight:700;"><span style="color:#3B6D11;">A:' + calA + '</span> <span style="color:#854F0B;">B:' + calB + '</span> <span style="color:#A32D2D;">C/D:' + calCD + '</span></div><div style="font-size:9px;color:#666;margin-top:4px;">Calificaciones</div></div>'
+    + '</div>'
+    + '<table><thead><tr>'
+    + '<th>Fecha</th><th>Cosechero</th><th>Sup.</th><th>Lote</th>'
+    + '<th>Maduro</th><th>Sobre.</th><th style="color:#b8b0ff;">Verde</th><th>Podrido</th>'
+    + '<th>Total</th><th>% Verde</th><th>Cal.</th>'
+    + '</tr></thead><tbody>' + filas + '</tbody></table>'
+    + '<div style="margin-top:10px;padding-top:8px;border-top:0.5px solid #e0e0e0;display:flex;justify-content:space-between;font-size:9px;color:#999;">'
+    + '<span>Palma Grande S.A.S - Sistema de supervision de cosecha</span>'
+    + '<span>Generado: ' + new Date().toLocaleDateString('es-CO') + '</span>'
+    + '</div></body></html>';
+
+  var contenedor = document.createElement('div');
+  contenedor.innerHTML = html;
+  contenedor.style.cssText = 'position:fixed;left:-9999px;top:0;width:297mm;background:#fff;';
+  document.body.appendChild(contenedor);
+
+  var btn = event.target.closest('button');
+  var txtOrig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
+  btn.disabled = true;
+
+  html2pdf().set({
+    margin: [6,6,6,6],
+    filename: 'Cosecha_' + desde + '_' + hasta + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+  }).from(contenedor.firstChild).save()
+    .then(function() {
+      document.body.removeChild(contenedor);
+      btn.innerHTML = txtOrig;
+      btn.disabled = false;
+      if (navigator.share) {
+        navigator.share({
+          title: 'Historial Cosecha - Palma Grande S.A.S',
+          text: 'Historial ' + desde + ' al ' + hasta + ' | Evals: ' + evalsFiltradas.length + ' | Racimos: ' + totalRac + ' | % Verde: ' + pctVG.toFixed(1) + '% | PDF descargado.'
+        }).catch(function() {});
+      }
+    })
+    .catch(function(err) {
+      document.body.removeChild(contenedor);
+      btn.innerHTML = txtOrig;
+      btn.disabled = false;
+      alert('Error al generar PDF. Intenta de nuevo.');
+    });
+}
+
+function rpOnSupChange() {
+  var idx = document.getElementById('rp-sup').value;
+  var sel = document.getElementById('rp-cosech');
+  if (idx === '') { sel.innerHTML = '<option value="">— elige supervisor —</option>'; sel.disabled = true; return; }
+  sel.disabled = false;
+  var activos = personal.filter(function(p) { return p.supIdx === parseInt(idx); });
+  sel.innerHTML = '<option value="">Todos los cosecheros</option>';
+  activos.forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.cod; o.textContent = p.cod + ' — ' + p.nombre;
+    sel.appendChild(o);
+  });
+}
+
+function rpOnPeriodoChange() {
+  var periodo = document.getElementById('rp-periodo').value;
+  var wrap    = document.getElementById('rp-fecha-wrap');
+  var lbl     = document.getElementById('rp-fecha-lbl');
+  if (!periodo) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  lbl.textContent = periodo === 'dia' ? 'Fecha' : 'Cualquier fecha de la semana';
+  document.getElementById('rp-fecha').value = new Date().toISOString().split('T')[0];
+}
+
+function semanaDeEval(fechaStr) {
+  var d = new Date(fechaStr);
+  if (isNaN(d)) return null;
+  var thu = new Date(d);
+  thu.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 3);
+  var year = thu.getFullYear();
+  var week = Math.ceil(((thu - new Date(year, 0, 4)) / 864e5 + 1) / 7);
+  return year + '-S' + String(week).padStart(2, '0');
+}
+
+function inicioFinSemana(fechaStr) {
+  var d = new Date(fechaStr);
+  var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+  var fmt = function(x) { return x.toISOString().split('T')[0]; };
+  return { inicio: fmt(lunes), fin: fmt(domingo) };
+}
+
+function generarReporte() {
+  var supIdx  = document.getElementById('rp-sup').value;
+  var cosechCod = document.getElementById('rp-cosech').value;
+  var periodo = document.getElementById('rp-periodo').value;
+  var fecha   = document.getElementById('rp-fecha').value;
+
+  if (!periodo || !fecha) { alert('Selecciona período y fecha.'); return; }
+
+  // Filtrar evaluaciones
+  var evFiltradas = evals.filter(function(e) {
+    var supOk = supIdx === '' || e.supIdx === parseInt(supIdx);
+    var cosOk = !cosechCod || e.cosechCod === cosechCod;
+    var fechaOk;
+    if (periodo === 'dia') {
+      fechaOk = e.fecha === fecha;
+    } else {
+      fechaOk = semanaDeEval(e.fecha) === semanaDeEval(fecha);
+    }
+    return supOk && cosOk && fechaOk;
+  });
+
+  if (evFiltradas.length === 0) {
+    alert('No hay evaluaciones para los filtros seleccionados.');
+    return;
+  }
+
+  // Si es por cosechero individual
+  if (cosechCod) {
+    renderReporteCosechero(cosechCod, evFiltradas, periodo, fecha);
+  } else {
+    renderReporteGrupal(evFiltradas, periodo, fecha, parseInt(supIdx));
+  }
+
+  document.getElementById('rp-preview').style.display = 'block';
+  document.getElementById('rp-preview').scrollIntoView({behavior:'smooth'});
+}
+
+function renderReporteCosechero(cod, evs, periodo, fecha) {
+  var p = personal.find(function(x) { return x.cod === cod; });
+  var nombre = p ? p.nombre : cod;
+  var sup    = evs.length > 0 ? evs[0].supervisor : '—';
+
+  var totRac  = evs.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
+  var racsAcum = {maduro:0, sobremaduro:0, verde:0, podrido:0};
+  MAD_KEYS.forEach(function(k) {
+    racsAcum[k] = evs.reduce(function(a,e) { return a + (e.racimos[k]||0); }, 0);
+  });
+  var pctVerde = totRac > 0 ? Math.round(racsAcum.verde / totRac * 1000) / 10 : 0;
+  var cal      = calFromPct(pctVerde);
+
+  // Promedios parámetros
+  var promParams = {};
+  CRITERIOS.forEach(function(c) {
+    promParams[c.id] = evs.length > 0
+      ? Math.round(evs.reduce(function(a,e) { return a + (e.pts[c.id]||0); }, 0) / evs.length * 10) / 10
+      : 0;
+  });
+
+  // Observaciones
+  var obs = evs.filter(function(e) { return e.obs && e.obs.trim(); }).map(function(e) { return e.obs.trim(); });
+
+  // Período label
+  var periodoLabel;
+  if (periodo === 'dia') {
+    periodoLabel = 'Fecha: ' + fecha;
+  } else {
+    var sf = inicioFinSemana(fecha);
+    periodoLabel = 'Semana del ' + sf.inicio + ' al ' + sf.fin;
+  }
+
+  var calBg  = cal.nota === 'A' ? '#EAF3DE' : cal.nota === 'B' ? '#FAEEDA' : '#FCEBEB';
+  var calCol = cal.nota === 'A' ? '#3B6D11'  : cal.nota === 'B' ? '#854F0B'  : '#A32D2D';
+
+  var starsHtml = function(val) {
+    var h = '';
+    for (var i = 1; i <= 5; i++) h += '<div class="reporte-star' + (i <= val ? ' on' : '') + '"></div>';
+    return h;
+  };
+
+  var madItems = [
+    {k:'maduro',bg:'#EAF3DE',col:'#3B6D11',lbl:'Maduro'},
+    {k:'sobremaduro',bg:'#FAEEDA',col:'#854F0B',lbl:'Sobremaduro'},
+    {k:'verde',bg:'#EEEDFE',col:'#534AB7',lbl:'Verde'},
+    {k:'podrido',bg:'#FCEBEB',col:'#A32D2D',lbl:'Podrido'},
+  ];
+
+  var html = '<div class="reporte-wrap">'
+    + '<div class="reporte-header">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem;">'
+    + '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">' + cod + '</div>'
+    + '<div><div class="reporte-titulo">' + nombre + '</div>'
+    + '<div class="reporte-sub">Supervisor: ' + sup + '</div></div></div>'
+    + '<div class="reporte-sub">' + periodoLabel + ' · ' + evs.length + ' evaluación' + (evs.length > 1 ? 'es' : '') + '</div>'
+    + '</div>'
+    + '<div class="reporte-body">'
+
+    // Calificación
+    + '<div class="reporte-cal" style="background:' + calBg + ';margin-bottom:1rem;">'
+    + '<div class="reporte-cal-nota" style="color:' + calCol + '">' + cal.nota + '</div>'
+    + '<div class="reporte-cal-label" style="color:' + calCol + '">' + cal.label + '</div>'
+    + '<div class="reporte-cal-desc" style="color:' + calCol + '">' + pctVerde.toFixed(1) + '% de racimos verdes</div>'
+    + '</div>'
+
+    // Racimos
+    + '<div class="reporte-seccion">'
+    + '<div class="reporte-seccion-titulo"><i class="ti ti-stack"></i> Racimos evaluados — Total: ' + totRac + '</div>'
+    + '<div class="reporte-mad-grid">'
+    + madItems.map(function(m) {
+        var pct = totRac > 0 ? Math.round(racsAcum[m.k]/totRac*1000)/10 : 0;
+        return '<div class="reporte-mad-item" style="background:' + m.bg + ';">'
+          + '<div class="reporte-mad-val" style="color:' + m.col + '">' + racsAcum[m.k] + '</div>'
+          + '<div class="reporte-mad-pct" style="color:' + m.col + '">' + pct.toFixed(1) + '%</div>'
+          + '<div class="reporte-mad-lbl" style="color:' + m.col + '">' + m.lbl + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div></div>'
+
+    // Parámetros
+    + '<div class="reporte-seccion">'
+    + '<div class="reporte-seccion-titulo"><i class="ti ti-checklist"></i> Parámetros de calidad</div>'
+    + CRITERIOS.map(function(c) {
+        var v = promParams[c.id];
+        return '<div class="reporte-param-row">'
+          + '<span class="reporte-param-nombre">' + c.n + '</span>'
+          + '<div style="display:flex;align-items:center;gap:6px;">'
+          + '<div class="reporte-param-stars">' + starsHtml(Math.round(v)) + '</div>'
+          + '<span style="font-size:13px;font-weight:600;color:' + (v>=4?'var(--g600)':v>=3?'var(--a600)':'var(--r600)') + '">' + v.toFixed(1) + '</span>'
+          + '</div></div>';
+      }).join('')
+    + '</div>'
+
+    // Observaciones
+    + (obs.length > 0
+      ? '<div class="reporte-seccion"><div class="reporte-seccion-titulo"><i class="ti ti-note"></i> Observaciones</div>'
+        + obs.map(function(o) { return '<div class="reporte-obs">' + o + '</div>'; }).join('<div style="height:6px"></div>')
+        + '</div>'
+      : '')
+
+    + '</div>'
+    + '<div class="reporte-footer">'
+    + '<span>Palma Grande S.A.S</span>'
+    + '<span>Generado: ' + new Date().toLocaleDateString('es-CO') + '</span>'
+    + '</div>'
+    + '</div>';
+
+  document.getElementById('rp-contenido').innerHTML = html;
+}
+
+function renderReporteGrupal(evs, periodo, fecha, supIdx) {
+  var sup = !isNaN(supIdx) && supIdx >= 0 ? SUPS[supIdx] : 'Todos los supervisores';
+  var periodoLabel = periodo === 'dia' ? 'Fecha: ' + fecha
+    : (function() { var sf = inicioFinSemana(fecha); return 'Semana ' + sf.inicio + ' al ' + sf.fin; })();
+
+  // Agrupar por cosechero
+  var porCos = {};
+  evs.forEach(function(e) {
+    if (!porCos[e.cosechCod]) porCos[e.cosechCod] = {nombre:e.cosechero, evals:[]};
+    porCos[e.cosechCod].evals.push(e);
+  });
+
+  var filas = Object.keys(porCos).map(function(cod) {
+    var info = porCos[cod];
+    var totRac = info.evals.reduce(function(a,e) { return a+e.totalRacimos; },0);
+    var verdes = info.evals.reduce(function(a,e) { return a+(e.racimos.verde||0); },0);
+    var pct    = totRac > 0 ? Math.round(verdes/totRac*1000)/10 : 0;
+    var cal    = calFromPct(pct);
+    return {cod, nombre:info.nombre, evals:info.evals.length, totRac, pct, cal};
+  }).sort(function(a,b) { return a.pct - b.pct; });
+
+  var html = '<div class="reporte-wrap">'
+    + '<div class="reporte-header">'
+    + '<div class="reporte-titulo">Resumen de cosecha</div>'
+    + '<div class="reporte-sub">' + sup + ' · ' + periodoLabel + '</div>'
+    + '<div class="reporte-sub">' + evs.length + ' evaluaciones · ' + filas.length + ' cosecheros</div>'
+    + '</div>'
+    + '<div class="reporte-body">'
+    + '<div class="reporte-seccion">'
+    + '<div class="reporte-seccion-titulo"><i class="ti ti-users"></i> Cosecheros evaluados</div>'
+    + filas.map(function(f) {
+        var calBg  = f.cal.nota==='A'?'#EAF3DE':f.cal.nota==='B'?'#FAEEDA':'#FCEBEB';
+        var calCol = f.cal.nota==='A'?'#3B6D11':f.cal.nota==='B'?'#854F0B':'#A32D2D';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--bd);">'
+          + '<div style="width:32px;height:32px;border-radius:50%;background:' + calBg + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:' + calCol + ';flex-shrink:0;">' + f.cal.nota + '</div>'
+          + '<div style="flex:1;">'
+          + '<div style="font-size:13px;font-weight:500;">' + f.nombre + ' <span style="font-size:11px;color:var(--tx3)">(' + f.cod + ')</span></div>'
+          + '<div style="font-size:11px;color:var(--tx2);">' + f.totRac + ' racimos · ' + f.evals + ' eval' + (f.evals>1?'s':'') + '</div>'
+          + '</div>'
+          + '<div style="font-size:16px;font-weight:700;color:' + calCol + '">' + f.pct.toFixed(1) + '%<div style="font-size:10px;text-align:center;font-weight:400;color:var(--tx3)">verde</div></div>'
+          + '</div>';
+      }).join('')
+    + '</div></div>'
+    + '<div class="reporte-footer"><span>Palma Grande S.A.S</span><span>' + new Date().toLocaleDateString('es-CO') + '</span></div>'
+    + '</div>';
+
+  document.getElementById('rp-contenido').innerHTML = html;
+}
+
+function descargarPDF() {
+  var elemento = document.getElementById('rp-contenido');
+  if (!elemento) return;
+
+  // Nombre del archivo
+  var cosechEl = document.getElementById('rp-cosech');
+  var cosechNombre = cosechEl && cosechEl.value
+    ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
+    : 'Grupo';
+  var fecha = document.getElementById('rp-fecha').value || new Date().toISOString().split('T')[0];
+  var periodo = document.getElementById('rp-periodo').value;
+  var nombreArchivo = 'Cosecha_' + cosechNombre.replace(/ /g,'_') + '_' + fecha + '.pdf';
+
+  var btn = event.target.closest('button');
+  var txtOriginal = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
+  btn.disabled = true;
+
+  var opt = {
+    margin:       [8, 8, 8, 8],
+    filename:     nombreArchivo,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true, logging: false },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak:    { mode: 'avoid-all' }
+  };
+
+  html2pdf().set(opt).from(elemento).save()
+    .then(function() {
+      btn.innerHTML = txtOriginal;
+      btn.disabled = false;
+    })
+    .catch(function(e) {
+      console.error('PDF error:', e);
+      btn.innerHTML = txtOriginal;
+      btn.disabled = false;
+      alert('Error al generar PDF. Intenta de nuevo.');
+    });
+}
+
+function compartirReporte() {
+  if (navigator.share) {
+    var texto = document.getElementById('rp-contenido').innerText;
+    var cosechEl = document.getElementById('rp-cosech');
+    var nombre = cosechEl && cosechEl.value
+      ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
+      : 'Grupo';
+    navigator.share({
+      title: 'Reporte Cosecha — ' + nombre,
+      text: ' Reporte de calidad cosecha\nPalma Grande S.A.S\n\n' + texto
+    }).catch(function() {});
+  } else {
+    window.print();
+  }
+}
+
+// ══ HISTORIAL FILTRADO ═══════════════════════════════════════════════════════
+var evalsFiltradas = [];
+
+function initHistorial() {
+  var hoy = new Date().toISOString().split('T')[0];
+  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-hasta').value = hoy;
+  filtrarHistorial();
+}
+
+function filtrarHistorial() {
+  var desde = document.getElementById('hist-desde').value;
+  var hasta = document.getElementById('hist-hasta').value;
+  var sup   = document.getElementById('hist-sup').value;
+  var cal   = document.getElementById('hist-cal').value;
+
+  evalsFiltradas = evals.filter(function(e) {
+    var fechaOk = (!desde || e.fecha >= desde) && (!hasta || e.fecha <= hasta);
+    var supOk   = !sup || e.supervisor === sup;
+    var calOk   = !cal || e.cal.nota === cal;
+    return fechaOk && supOk && calOk;
+  });
+
+  renderHistorialFiltrado();
+}
+
+function limpiarFiltrosHistorial() {
+  document.getElementById('hist-sup').value = '';
+  document.getElementById('hist-cal').value = '';
+  var hoy = new Date().toISOString().split('T')[0];
+  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-hasta').value = hoy;
+  filtrarHistorial();
+}
+
+function renderHistorialFiltrado() {
+  var hb = document.getElementById('hbody');
+  var count = document.getElementById('hist-count');
+  count.textContent = evalsFiltradas.length + ' evaluación' + (evalsFiltradas.length !== 1 ? 'es' : '');
+
+  if (!evalsFiltradas.length) {
+    hb.innerHTML = '<div class="empty">Sin evaluaciones para los filtros seleccionados</div>';
+    return;
+  }
+
+  var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
+  hb.innerHTML = evalsFiltradas.slice().reverse().map(function(e) {
+    var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
+      .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
+    var cicloTag = e.fueraCiclo
+      ? '<span class="tag tag-bad"> +' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
+      : '<span class="tag tag-ok">' + e.diasCiclo + 'd </span>';
+    var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
+    return '<div class="hrow">'
+      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
+      + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
+      + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma||'') + '<br>' + cicloTag + '</span>'
+      + '<span><div class="mini-pills">' + pills + '</div></span>'
+      + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
+      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
+      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
+      + '</div>';
+  }).join('');
+}
+
+function exportarHistorialPDF() {
+  if (!evalsFiltradas.length) { alert('No hay evaluaciones para exportar.'); return; }
+
+  var desde = document.getElementById('hist-desde').value;
+  var hasta  = document.getElementById('hist-hasta').value;
+  var sup    = document.getElementById('hist-sup').value || 'Todos los supervisores';
+
+  // Construir contenido PDF
+  var totalRac  = evalsFiltradas.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
+  var totVerde  = evalsFiltradas.reduce(function(a,e) { return a + e.racimos.verde; }, 0);
+  var pctVGlobal = totalRac > 0 ? Math.round(totVerde / totalRac * 1000) / 10 : 0;
+  var calA = evalsFiltradas.filter(function(e) { return e.cal.nota === 'A'; }).length;
+  var calB = evalsFiltradas.filter(function(e) { return e.cal.nota === 'B'; }).length;
+  var calCD = evalsFiltradas.filter(function(e) { return ['C','D'].includes(e.cal.nota); }).length;
+
+  var filas = evalsFiltradas.slice().reverse().map(function(e) {
+    var vCol = e.pctVerde > 3 ? '#A32D2D' : '#3B6D11';
+    var calBg = e.cal.nota==='A'?'#EAF3DE':e.cal.nota==='B'?'#FAEEDA':'#FCEBEB';
+    var calCol = e.cal.nota==='A'?'#3B6D11':e.cal.nota==='B'?'#854F0B':'#A32D2D';
+    return '<tr style="border-bottom:0.5px solid #e0e0e0;">'
+      + '<td style="padding:6px 8px;font-size:11px;">' + e.fecha + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px;font-weight:500;">' + e.cosechero + '<br><span style="color:#999;font-size:10px">' + e.cosechCod + '</span></td>'
+      + '<td style="padding:6px 8px;font-size:11px;color:#666;">' + e.supervisor.split(' ').map(function(w){return w[0];}).join('') + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px;">' + e.lote + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;">' + e.totalRacimos + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</td>'
+      + '<td style="padding:6px 8px;text-align:center;"><span style="background:' + calBg + ';color:' + calCol + ';padding:2px 6px;border-radius:8px;font-size:11px;font-weight:700;">' + e.cal.nota + '</span></td>'
+      + '</tr>';
+  }).join('');
+
+  var html = '<div style="font-family:Arial,sans-serif;padding:16px;">'
+    // Header
+    + '<div style="background:linear-gradient(135deg,#1e4a0e,#3B6D11);color:#fff;padding:16px;border-radius:8px;margin-bottom:16px;">'
+    + '<div style="font-size:18px;font-weight:800;letter-spacing:.05em;">PALMAGRANDE S.A.S</div>'
+    + '<div style="font-size:13px;opacity:.85;margin-top:2px;">Historial de evaluaciones de cosecha</div>'
+    + '<div style="font-size:11px;opacity:.7;margin-top:6px;">' + sup + ' · ' + desde + ' al ' + hasta + '</div>'
+    + '</div>'
+    // Resumen
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">'
+    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;">' + evalsFiltradas.length + '</div><div style="font-size:10px;color:#666;">Evaluaciones</div></div>'
+    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;">' + totalRac + '</div><div style="font-size:10px;color:#666;">Racimos</div></div>'
+    + '<div style="background:' + (pctVGlobal>3?'#FCEBEB':'#EAF3DE') + ';border-radius:6px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:' + (pctVGlobal>3?'#A32D2D':'#3B6D11') + '">' + pctVGlobal.toFixed(1) + '%</div><div style="font-size:10px;color:#666;">% Verde</div></div>'
+    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:13px;font-weight:700;color:#3B6D11">A:' + calA + ' B:' + calB + '</div><div style="font-size:13px;font-weight:700;color:#A32D2D">C/D:' + calCD + '</div><div style="font-size:10px;color:#666;">Calificaciones</div></div>'
+    + '</div>'
+    // Tabla
+    + '<table style="width:100%;border-collapse:collapse;">'
+    + '<thead><tr style="background:#3B6D11;color:#fff;">'
+    + '<th style="padding:8px;font-size:11px;text-align:left;">Fecha</th>'
+    + '<th style="padding:8px;font-size:11px;text-align:left;">Cosechero</th>'
+    + '<th style="padding:8px;font-size:11px;text-align:left;">Sup.</th>'
+    + '<th style="padding:8px;font-size:11px;text-align:left;">Lote</th>'
+    + '<th style="padding:8px;font-size:11px;text-align:center;">Racimos</th>'
+    + '<th style="padding:8px;font-size:11px;text-align:center;">% Verde</th>'
+    + '<th style="padding:8px;font-size:11px;text-align:center;">Cal.</th>'
+    + '</tr></thead>'
+    + '<tbody>' + filas + '</tbody>'
+    + '</table>'
+    + '<div style="margin-top:16px;text-align:right;font-size:10px;color:#999;">Generado: ' + new Date().toLocaleString('es-CO') + ' · Palma Grande S.A.S</div>'
+    + '</div>';
+
+  var contenedor = document.createElement('div');
+  contenedor.innerHTML = html;
+  document.body.appendChild(contenedor);
+
+  var btn = event.target.closest('button');
+  var txtOriginal = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i>';
+  btn.disabled = true;
+
+  var opt = {
+    margin: [5,5,5,5],
+    filename: 'Historial_Cosecha_' + desde + '_' + hasta + '.pdf',
+    image: { type:'jpeg', quality:0.98 },
+    html2canvas: { scale:2, useCORS:true, logging:false },
+    jsPDF: { unit:'mm', format:'a4', orientation:'landscape' }
+  };
+
+  html2pdf().set(opt).from(contenedor).save()
+    .then(function() {
+      document.body.removeChild(contenedor);
+      btn.innerHTML = txtOriginal;
+      btn.disabled = false;
+    })
+    .catch(function(e) {
+      document.body.removeChild(contenedor);
+      btn.innerHTML = txtOriginal;
+      btn.disabled = false;
+      alert('Error al generar PDF.');
+    });
+}
+
 // ══ NAVEGACIÓN ═══════════════════════════════════════════════════════════════
 function showTab(id, btn) {
   document.querySelectorAll('.sec').forEach(function(s) { s.classList.remove('active'); });
   document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
   document.getElementById('sec-' + id).classList.add('active');
   btn.classList.add('active');
-  if (id === 'personal') { renderPersonal(); return; }
-  if (id !== 'registro') upd();
+  if (id === 'personal')  { renderPersonal(); return; }
+  if (id === 'reportes')  { return; }
+  if (id === 'historial') { upd(); initHistorial(); return; }
+  if (id !== 'registro')  { upd(); }
 }
 </script>
 </body>
