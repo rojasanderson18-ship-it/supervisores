@@ -1324,7 +1324,7 @@ function enviarAGAS(payload) {
 }
 
 function cargarDesdeGAS() {
-  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return;
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return Promise.resolve();
   var banner = document.getElementById('sync-banner');
   banner.style.display = 'flex';
 
@@ -1362,7 +1362,7 @@ function cargarDesdeGAS() {
     })
     .catch(function(e) { console.warn('GAS evals no disponible:', e); });
 
-  Promise.all([promPersonal, promEvals]).finally(function() {
+  return Promise.all([promPersonal, promEvals]).finally(function() {
     banner.style.display = 'none';
   });
 }
@@ -2415,10 +2415,20 @@ function showTab(id, btn) {
   document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
   document.getElementById('sec-' + id).classList.add('active');
   btn.classList.add('active');
-  if (id === 'personal')  { renderPersonal(); return; }
-  if (id === 'reportes')  { return; }
-  if (id === 'historial') { upd(); initHistorial(); return; }
-  if (id !== 'registro')  { upd(); }
+  if (id === 'personal') { renderPersonal(); return; }
+  if (id === 'reportes') {
+    if (evals.length === 0) cargarDesdeGAS();
+    return;
+  }
+  if (id === 'historial') {
+    if (evals.length === 0) {
+      cargarDesdeGAS().then ? cargarDesdeGAS().then(function(){ upd(); initHistorial(); }) : (cargarDesdeGAS(), setTimeout(function(){ upd(); initHistorial(); }, 2000));
+    } else {
+      upd(); initHistorial();
+    }
+    return;
+  }
+  if (id !== 'registro') upd();
 }
 </script>
 </body>
