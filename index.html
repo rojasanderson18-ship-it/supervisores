@@ -1763,57 +1763,52 @@ function renderReporteGrupal(evs, periodo, fecha, supIdx) {
 
 function descargarPDF() {
   var contenidoEl = document.getElementById('rp-contenido');
-  if (!contenidoEl || !contenidoEl.innerHTML) { alert('Primero genera el resumen.'); return; }
+  if (!contenidoEl || !contenidoEl.innerHTML.trim()) { alert('Primero genera el resumen.'); return; }
 
-  var cosechEl = document.getElementById('rp-cosech');
-  var nombre   = cosechEl && cosechEl.value
-    ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
-    : 'Grupo';
-  var fecha    = document.getElementById('rp-fecha').value || new Date().toISOString().split('T')[0];
-  var periodo  = document.getElementById('rp-periodo').value;
+  var supIdx    = document.getElementById('rp-sup').value;
+  var cosechCod = document.getElementById('rp-cosech').value;
+  var periodo   = document.getElementById('rp-periodo').value;
+  var fecha     = document.getElementById('rp-fecha').value;
 
   var btn = event.target.closest('button');
   var txtOrig = btn.innerHTML;
-  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando PDF...';
   btn.disabled = true;
 
-  // Crear contenedor con estilos completos para html2pdf
-  var wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;font-family:Arial,sans-serif;padding:15px;';
-  wrapper.innerHTML = '<style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;}'
-    + '.reporte-wrap{background:#fff;}'
-    + '.reporte-header{background:linear-gradient(135deg,#1e4a0e,#3B6D11);color:#fff;padding:14px 16px;border-radius:8px;margin-bottom:12px;}'
-    + '.reporte-body{padding:0;}'
-    + '.reporte-cal{border-radius:8px;padding:12px;margin-bottom:12px;text-align:center;}'
-    + '.reporte-mad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}'
-    + '.reporte-mad-item{border-radius:6px;padding:8px;text-align:center;}'
-    + '.reporte-param-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid #e8e8e8;}'
-    + '.reporte-star.on{color:#639922;} .reporte-star{color:#ddd;}'
-    + '.reporte-obs{background:#f5f5f5;border-radius:6px;padding:8px;font-size:12px;color:#666;font-style:italic;}'
-    + '.reporte-footer{margin-top:10px;padding-top:8px;border-top:0.5px solid #ddd;display:flex;justify-content:space-between;font-size:10px;color:#999;}'
-    + '</style>'
-    + contenidoEl.innerHTML;
-  document.body.appendChild(wrapper);
+  var supNombre = supIdx !== '' ? SUPS[parseInt(supIdx)] : '';
 
-  html2pdf().set({
-    margin: [8, 8, 8, 8],
-    filename: 'Reporte_' + nombre.replace(/ /g,'_') + '_' + fecha + '.pdf',
-    image: { type: 'jpeg', quality: 0.97 },
-    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 794 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: 'avoid-all' }
-  }).from(wrapper).save()
-    .then(function() {
-      document.body.removeChild(wrapper);
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
+  fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'generarPDFReporte',
+      params: {
+        supervisor: supNombre,
+        cosechero:  cosechCod,
+        periodo:    periodo,
+        fecha:      fecha
+      }
     })
-    .catch(function(e) {
-      document.body.removeChild(wrapper);
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
-      alert('Error al generar PDF.');
-    });
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.innerHTML = txtOrig;
+    btn.disabled  = false;
+    if (data.ok && data.url) {
+      window.open(data.url, '_blank');
+      if (navigator.share) {
+        setTimeout(function() {
+          navigator.share({ title: data.filename, url: data.url }).catch(function(){});
+        }, 800);
+      }
+    } else {
+      alert('Error: ' + (data.error || 'No se pudo generar el PDF'));
+    }
+  })
+  .catch(function() {
+    btn.innerHTML = txtOrig;
+    btn.disabled  = false;
+    alert('Error de conexión.');
+  });
 }
 
 function compartirReporte() {
