@@ -1937,24 +1937,27 @@ function exportarHistorialPDF() {
       ? '<span style="background:#FCEBEB;color:#A32D2D;padding:1px 4px;border-radius:4px;font-size:9px;">+' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
       : '<span style="color:#3B6D11;font-size:9px;">' + e.diasCiclo + 'd OK</span>';
     return '<tr style="background:' + rowBg + ';">'
-      + '<td style="padding:5px 6px;font-size:10px;color:#444;">' + e.fecha + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;"><b>' + e.cosechero + '</b><br><span style="color:#999;font-size:9px;">' + e.cosechCod + '</span></td>'
-      + '<td style="padding:5px 6px;font-size:9px;color:#666;">' + e.supervisor.split(' ').map(function(w){return w[0];}).join('') + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;">' + e.lote + '<br>' + ciclo + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;text-align:center;">' + e.racimos.maduro + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;text-align:center;">' + e.racimos.sobremaduro + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;text-align:center;color:#534AB7;font-weight:600;">' + e.racimos.verde + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;text-align:center;">' + e.racimos.podrido + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;text-align:center;font-weight:700;">' + e.totalRacimos + '</td>'
-      + '<td style="padding:5px 6px;font-size:10px;text-align:center;font-weight:700;color:' + vCol + ';">' + e.pctVerde.toFixed(1) + '%</td>'
-      + '<td style="padding:5px 6px;text-align:center;"><span style="background:' + calBg + ';color:' + calCol + ';padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;">' + e.cal.nota + '</span></td>'
+      + '<td>' + e.fecha + '</td>'
+      + '<td><b>' + e.cosechero + '</b><br><span style="color:#999;font-size:8px;">' + e.cosechCod + '</span></td>'
+      + '<td style="color:#666;">' + e.supervisor.split(' ').map(function(w){return w[0];}).join('') + '</td>'
+      + '<td>' + e.lote + '<br>' + ciclo + '</td>'
+      + '<td style="text-align:center;">' + e.racimos.maduro + '</td>'
+      + '<td style="text-align:center;">' + e.racimos.sobremaduro + '</td>'
+      + '<td style="text-align:center;color:#534AB7;font-weight:600;">' + e.racimos.verde + '</td>'
+      + '<td style="text-align:center;">' + e.racimos.podrido + '</td>'
+      + '<td style="text-align:center;font-weight:700;">' + e.totalRacimos + '</td>'
+      + '<td style="text-align:center;font-weight:700;color:' + vCol + ';">' + e.pctVerde.toFixed(1) + '%</td>'
+      + '<td style="text-align:center;"><span style="background:' + calBg + ';color:' + calCol + ';padding:1px 6px;border-radius:6px;font-size:9px;font-weight:700;">' + e.cal.nota + '</span></td>'
       + '</tr>';
   }).join('');
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;padding:12px;background:#fff;}'
-    + 'table{width:100%;border-collapse:collapse;}th{background:#3B6D11;color:#fff;padding:7px 6px;font-size:10px;text-align:center;}'
-    + 'td{border-bottom:0.5px solid #e8e8e8;}</style></head><body>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;padding:10px;background:#fff;}'
+    + 'table{width:100%;border-collapse:collapse;}'
+    + 'th{background:#3B6D11;color:#fff;padding:5px 4px;font-size:9px;text-align:center;}'
+    + 'td{border-bottom:0.5px solid #e8e8e8;padding:4px;font-size:9px;}'
+    + 'tr{page-break-inside:avoid;}'
+    + '</style></head><body>'
     + '<div style="background:linear-gradient(135deg,#1e4a0e,#3B6D11);color:#fff;padding:14px 16px;border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'
     + '<div><div style="font-size:16px;font-weight:800;letter-spacing:.05em;">PALMAGRANDE S.A.S</div>'
     + '<div style="font-size:11px;opacity:.85;margin-top:2px;">Historial de evaluaciones de cosecha</div>'
@@ -1988,11 +1991,12 @@ function exportarHistorialPDF() {
   btn.disabled = true;
 
   html2pdf().set({
-    margin: [6,6,6,6],
+    margin: [8,8,8,8],
     filename: 'Cosecha_' + desde + '_' + hasta + '.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff', scrollY: 0 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   }).from(contenedor.firstChild).save()
     .then(function() {
       document.body.removeChild(contenedor);
