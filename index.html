@@ -1581,21 +1581,6 @@ function initHistorial() {
   }
 }
 
-function filtrarHistorial() {
-  var desde = document.getElementById('hist-desde').value;
-  var hasta = document.getElementById('hist-hasta').value;
-  var sup   = document.getElementById('hist-sup').value;
-  var cal   = document.getElementById('hist-cal').value;
-
-  evalsFiltradas = evals.filter(function(e) {
-    var fechaOk = (!desde || e.fecha >= desde) && (!hasta || e.fecha <= hasta);
-    var supOk   = !sup || e.supervisor === sup;
-    var calOk   = !cal || e.cal.nota === cal;
-    return fechaOk && supOk && calOk;
-  });
-
-  renderHistorialFiltrado();
-}
 
 function limpiarFiltrosHistorial() {
   document.getElementById('hist-sup').value = '';
@@ -1637,75 +1622,6 @@ function renderHistorialFiltrado() {
   }).join('');
 }
 
-function exportarHistorialPDF() {
-  if (evals.length === 0) {
-    var btn = event.target.closest('button');
-    var txtOrig = btn.innerHTML;
-    btn.innerHTML = '<i class="ti ti-refresh" style="animation:spin 1s linear infinite;font-size:13px;vertical-align:-1px"></i> Cargando...';
-    btn.disabled = true;
-    cargarDesdeGAS().then(function() {
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
-      filtrarHistorial();
-      if (evalsFiltradas.length === 0) {
-        alert('No hay evaluaciones para el período seleccionado.');
-      } else {
-        exportarHistorialPDF();
-      }
-    }).catch(function() {
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
-      alert('No se pudo cargar los datos.');
-    });
-    return;
-  }
-  if (!evalsFiltradas.length) { alert('No hay evaluaciones para exportar.'); return; }
-
-  var desde  = document.getElementById('hist-desde').value;
-  var hasta  = document.getElementById('hist-hasta').value;
-  var supSel = document.getElementById('hist-sup').value || '';
-  var calSel = document.getElementById('hist-cal').value || '';
-
-  var btn = event.target.closest('button');
-  var txtOrig = btn.innerHTML;
-  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando PDF...';
-  btn.disabled = true;
-
-  // Generar PDF en el servidor GAS
-  fetch(GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'generarPDF',
-      params: { desde: desde, hasta: hasta, supervisor: supSel, cal: calSel }
-    })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    btn.innerHTML = txtOrig;
-    btn.disabled = false;
-    if (data.ok && data.url) {
-      // Abrir URL de descarga directa
-      window.open(data.url, '_blank');
-      // Compartir por WhatsApp si disponible
-      if (navigator.share) {
-        setTimeout(function() {
-          navigator.share({
-            title: 'Historial Cosecha - Palma Grande S.A.S',
-            text: 'Historial ' + desde + ' al ' + hasta + ' | ' + evalsFiltradas.length + ' evals',
-            url: data.url
-          }).catch(function() {});
-        }, 1000);
-      }
-    } else {
-      alert('Error al generar PDF: ' + (data.error || 'Error desconocido'));
-    }
-  })
-  .catch(function(err) {
-    btn.innerHTML = txtOrig;
-    btn.disabled = false;
-    alert('Error de conexión. Verifica tu señal e intenta de nuevo.');
-  });
-}
 
 
 function rpOnSupChange() {
@@ -1968,51 +1884,35 @@ function renderReporteGrupal(evs, periodo, fecha, supIdx) {
 function descargarPDF() {
   var contenidoEl = document.getElementById('rp-contenido');
   if (!contenidoEl || !contenidoEl.innerHTML.trim()) { alert('Primero genera el resumen.'); return; }
-
   var supIdx    = document.getElementById('rp-sup').value;
   var cosechCod = document.getElementById('rp-cosech').value;
   var periodo   = document.getElementById('rp-periodo').value;
   var fecha     = document.getElementById('rp-fecha').value;
-
   var btn = event.target.closest('button');
   var txtOrig = btn.innerHTML;
-  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando PDF...';
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
   btn.disabled = true;
-
-  var supNombre = supIdx !== '' ? SUPS[parseInt(supIdx)] : '';
-
   fetch(GAS_URL, {
     method: 'POST',
     body: JSON.stringify({
       action: 'generarPDFReporte',
       params: {
-        supervisor: supNombre,
-        cosechero:  cosechCod,
-        periodo:    periodo,
-        fecha:      fecha
+        supervisor: supIdx !== '' ? SUPS[parseInt(supIdx)] : '',
+        cosechero: cosechCod,
+        periodo: periodo,
+        fecha: fecha
       }
     })
   })
   .then(function(r) { return r.json(); })
-  .then(function(data) {
-    btn.innerHTML = txtOrig;
-    btn.disabled  = false;
-    if (data.ok && data.url) {
-      window.open(data.url, '_blank');
-      if (navigator.share) {
-        setTimeout(function() {
-          navigator.share({ title: data.filename, url: data.url }).catch(function(){});
-        }, 800);
-      }
-    } else {
-      alert('Error: ' + (data.error || 'No se pudo generar el PDF'));
-    }
+  .then(function(d) {
+    btn.innerHTML = txtOrig; btn.disabled = false;
+    if (d.ok && d.url) {
+      window.open(d.url, '_blank');
+      if (navigator.share) { setTimeout(function() { navigator.share({title: d.filename, url: d.url}).catch(function(){}); }, 800); }
+    } else { alert('Error: ' + (d.error || 'No se pudo generar')); }
   })
-  .catch(function() {
-    btn.innerHTML = txtOrig;
-    btn.disabled  = false;
-    alert('Error de conexión.');
-  });
+  .catch(function() { btn.innerHTML = txtOrig; btn.disabled = false; alert('Error de conexion.'); });
 }
 
 function compartirReporte() {
@@ -2103,116 +2003,44 @@ function renderHistorialFiltrado() {
 }
 
 function exportarHistorialPDF() {
-  // Si no hay datos, cargar primero del GAS
   if (evals.length === 0) {
     var btn = event.target.closest('button');
     var txtOrig = btn.innerHTML;
-    btn.innerHTML = '<i class="ti ti-refresh" style="animation:spin 1s linear infinite;font-size:13px;vertical-align:-1px"></i> Cargando...';
+    btn.innerHTML = '<i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i> Cargando...';
     btn.disabled = true;
     cargarDesdeGAS().then(function() {
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
+      btn.innerHTML = txtOrig; btn.disabled = false;
       filtrarHistorial();
-      if (evalsFiltradas.length === 0) {
-        alert('No hay evaluaciones para el período seleccionado.');
-      } else {
-        exportarHistorialPDF();
-      }
-    }).catch(function() {
-      btn.innerHTML = txtOrig;
-      btn.disabled = false;
-      alert('No se pudo cargar los datos. Verifica tu conexión.');
-    });
+      if (!evalsFiltradas.length) { alert('No hay evaluaciones.'); return; }
+      exportarHistorialPDF();
+    }).catch(function() { btn.innerHTML = txtOrig; btn.disabled = false; alert('Error de conexion.'); });
     return;
   }
   if (!evalsFiltradas.length) { alert('No hay evaluaciones para exportar.'); return; }
-
-  var desde = document.getElementById('hist-desde').value;
+  var desde  = document.getElementById('hist-desde').value;
   var hasta  = document.getElementById('hist-hasta').value;
-  var sup    = document.getElementById('hist-sup').value || 'Todos los supervisores';
-
-  // Construir contenido PDF
-  var totalRac  = evalsFiltradas.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
-  var totVerde  = evalsFiltradas.reduce(function(a,e) { return a + e.racimos.verde; }, 0);
-  var pctVGlobal = totalRac > 0 ? Math.round(totVerde / totalRac * 1000) / 10 : 0;
-  var calA = evalsFiltradas.filter(function(e) { return e.cal.nota === 'A'; }).length;
-  var calB = evalsFiltradas.filter(function(e) { return e.cal.nota === 'B'; }).length;
-  var calCD = evalsFiltradas.filter(function(e) { return ['C','D'].includes(e.cal.nota); }).length;
-
-  var filas = evalsFiltradas.slice().reverse().map(function(e) {
-    var vCol = e.pctVerde > 3 ? '#A32D2D' : '#3B6D11';
-    var calBg = e.cal.nota==='A'?'#EAF3DE':e.cal.nota==='B'?'#FAEEDA':'#FCEBEB';
-    var calCol = e.cal.nota==='A'?'#3B6D11':e.cal.nota==='B'?'#854F0B':'#A32D2D';
-    return '<tr style="border-bottom:0.5px solid #e0e0e0;">'
-      + '<td style="padding:6px 8px;font-size:11px;">' + e.fecha + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;font-weight:500;">' + e.cosechero + '<br><span style="color:#999;font-size:10px">' + e.cosechCod + '</span></td>'
-      + '<td style="padding:6px 8px;font-size:11px;color:#666;">' + e.supervisor.split(' ').map(function(w){return w[0];}).join('') + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;">' + e.lote + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;">' + e.totalRacimos + '</td>'
-      + '<td style="padding:6px 8px;font-size:11px;text-align:center;font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</td>'
-      + '<td style="padding:6px 8px;text-align:center;"><span style="background:' + calBg + ';color:' + calCol + ';padding:2px 6px;border-radius:8px;font-size:11px;font-weight:700;">' + e.cal.nota + '</span></td>'
-      + '</tr>';
-  }).join('');
-
-  var html = '<div style="font-family:Arial,sans-serif;padding:16px;">'
-    // Header
-    + '<div style="background:linear-gradient(135deg,#1e4a0e,#3B6D11);color:#fff;padding:16px;border-radius:8px;margin-bottom:16px;">'
-    + '<div style="font-size:18px;font-weight:800;letter-spacing:.05em;">PALMAGRANDE S.A.S</div>'
-    + '<div style="font-size:13px;opacity:.85;margin-top:2px;">Historial de evaluaciones de cosecha</div>'
-    + '<div style="font-size:11px;opacity:.7;margin-top:6px;">' + sup + ' · ' + desde + ' al ' + hasta + '</div>'
-    + '</div>'
-    // Resumen
-    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">'
-    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;">' + evalsFiltradas.length + '</div><div style="font-size:10px;color:#666;">Evaluaciones</div></div>'
-    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;">' + totalRac + '</div><div style="font-size:10px;color:#666;">Racimos</div></div>'
-    + '<div style="background:' + (pctVGlobal>3?'#FCEBEB':'#EAF3DE') + ';border-radius:6px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;color:' + (pctVGlobal>3?'#A32D2D':'#3B6D11') + '">' + pctVGlobal.toFixed(1) + '%</div><div style="font-size:10px;color:#666;">% Verde</div></div>'
-    + '<div style="background:#f5f5f5;border-radius:6px;padding:10px;text-align:center;"><div style="font-size:13px;font-weight:700;color:#3B6D11">A:' + calA + ' B:' + calB + '</div><div style="font-size:13px;font-weight:700;color:#A32D2D">C/D:' + calCD + '</div><div style="font-size:10px;color:#666;">Calificaciones</div></div>'
-    + '</div>'
-    // Tabla
-    + '<table style="width:100%;border-collapse:collapse;">'
-    + '<thead><tr style="background:#3B6D11;color:#fff;">'
-    + '<th style="padding:8px;font-size:11px;text-align:left;">Fecha</th>'
-    + '<th style="padding:8px;font-size:11px;text-align:left;">Cosechero</th>'
-    + '<th style="padding:8px;font-size:11px;text-align:left;">Sup.</th>'
-    + '<th style="padding:8px;font-size:11px;text-align:left;">Lote</th>'
-    + '<th style="padding:8px;font-size:11px;text-align:center;">Racimos</th>'
-    + '<th style="padding:8px;font-size:11px;text-align:center;">% Verde</th>'
-    + '<th style="padding:8px;font-size:11px;text-align:center;">Cal.</th>'
-    + '</tr></thead>'
-    + '<tbody>' + filas + '</tbody>'
-    + '</table>'
-    + '<div style="margin-top:16px;text-align:right;font-size:10px;color:#999;">Generado: ' + new Date().toLocaleString('es-CO') + ' · Palma Grande S.A.S</div>'
-    + '</div>';
-
-  var contenedor = document.createElement('div');
-  contenedor.innerHTML = html;
-  document.body.appendChild(contenedor);
-
+  var supSel = document.getElementById('hist-sup').value || '';
+  var calSel = document.getElementById('hist-cal').value || '';
   var btn = event.target.closest('button');
-  var txtOriginal = btn.innerHTML;
-  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i>';
+  var txtOrig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando PDF...';
   btn.disabled = true;
-
-  var opt = {
-    margin: [5,5,5,5],
-    filename: 'Historial_Cosecha_' + desde + '_' + hasta + '.pdf',
-    image: { type:'jpeg', quality:0.98 },
-    html2canvas: { scale:2, useCORS:true, logging:false },
-    jsPDF: { unit:'mm', format:'a4', orientation:'landscape' }
-  };
-
-  html2pdf().set(opt).from(contenedor).save()
-    .then(function() {
-      document.body.removeChild(contenedor);
-      btn.innerHTML = txtOriginal;
-      btn.disabled = false;
+  fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'generarPDF',
+      params: { desde: desde, hasta: hasta, supervisor: supSel, cal: calSel }
     })
-    .catch(function(e) {
-      document.body.removeChild(contenedor);
-      btn.innerHTML = txtOriginal;
-      btn.disabled = false;
-      alert('Error al generar PDF.');
-    });
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    btn.innerHTML = txtOrig; btn.disabled = false;
+    if (d.ok && d.url) {
+      window.open(d.url, '_blank');
+      if (navigator.share) { setTimeout(function() { navigator.share({title: d.filename, url: d.url}).catch(function(){}); }, 800); }
+    } else { alert('Error: ' + (d.error || 'No se pudo generar')); }
+  })
+  .catch(function() { btn.innerHTML = txtOrig; btn.disabled = false; alert('Error de conexion.'); });
 }
 
 // ══ NAVEGACIÓN ═══════════════════════════════════════════════════════════════
