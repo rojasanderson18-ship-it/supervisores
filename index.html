@@ -194,10 +194,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .empty i{font-size:26px;display:block;margin-bottom:8px;}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--g600);color:#fff;padding:10px 16px;border-radius:var(--rr);font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;display:flex;align-items:center;gap:6px;}
 .toast.show{opacity:1;}
-.cosech-option{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--tx);transition:background .1s;}
-.cosech-option:hover{background:var(--bg2);}
-.cosech-option input[type=checkbox]{width:16px;height:16px;accent-color:var(--g600);flex-shrink:0;}
+.cosech-option{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;font-size:14px;color:var(--tx);transition:background .15s;border-bottom:.5px solid var(--bd);}
+.cosech-option:last-child{border-bottom:none;}
+.cosech-option:active{background:var(--bg3);}
+.cosech-option input[type=checkbox]{width:22px;height:22px;accent-color:var(--g600);flex-shrink:0;cursor:pointer;}
 .cosech-selected{background:var(--g50);}
+.cosech-selected label{color:var(--g600);font-weight:600;}
 .sync-banner{display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--b600);color:#fff;padding:8px 16px;border-radius:var(--rr);font-size:12px;font-weight:500;z-index:1000;align-items:center;gap:6px;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Reporte */
