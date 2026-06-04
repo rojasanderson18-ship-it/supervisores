@@ -1966,43 +1966,53 @@ function renderReporteGrupal(evs, periodo, fecha, supIdx) {
 }
 
 function descargarPDF() {
-  var elemento = document.getElementById('rp-contenido');
-  if (!elemento) return;
+  var contenidoEl = document.getElementById('rp-contenido');
+  if (!contenidoEl || !contenidoEl.innerHTML.trim()) { alert('Primero genera el resumen.'); return; }
 
-  // Nombre del archivo
-  var cosechEl = document.getElementById('rp-cosech');
-  var cosechNombre = cosechEl && cosechEl.value
-    ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
-    : 'Grupo';
-  var fecha = document.getElementById('rp-fecha').value || new Date().toISOString().split('T')[0];
-  var periodo = document.getElementById('rp-periodo').value;
-  var nombreArchivo = 'Cosecha_' + cosechNombre.replace(/ /g,'_') + '_' + fecha + '.pdf';
+  var supIdx    = document.getElementById('rp-sup').value;
+  var cosechCod = document.getElementById('rp-cosech').value;
+  var periodo   = document.getElementById('rp-periodo').value;
+  var fecha     = document.getElementById('rp-fecha').value;
 
   var btn = event.target.closest('button');
-  var txtOriginal = btn.innerHTML;
-  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
+  var txtOrig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando PDF...';
   btn.disabled = true;
 
-  var opt = {
-    margin:       [8, 8, 8, 8],
-    filename:     nombreArchivo,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true, logging: false },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak:    { mode: 'avoid-all' }
-  };
+  var supNombre = supIdx !== '' ? SUPS[parseInt(supIdx)] : '';
 
-  html2pdf().set(opt).from(elemento).save()
-    .then(function() {
-      btn.innerHTML = txtOriginal;
-      btn.disabled = false;
+  fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'generarPDFReporte',
+      params: {
+        supervisor: supNombre,
+        cosechero:  cosechCod,
+        periodo:    periodo,
+        fecha:      fecha
+      }
     })
-    .catch(function(e) {
-      console.error('PDF error:', e);
-      btn.innerHTML = txtOriginal;
-      btn.disabled = false;
-      alert('Error al generar PDF. Intenta de nuevo.');
-    });
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.innerHTML = txtOrig;
+    btn.disabled  = false;
+    if (data.ok && data.url) {
+      window.open(data.url, '_blank');
+      if (navigator.share) {
+        setTimeout(function() {
+          navigator.share({ title: data.filename, url: data.url }).catch(function(){});
+        }, 800);
+      }
+    } else {
+      alert('Error: ' + (data.error || 'No se pudo generar el PDF'));
+    }
+  })
+  .catch(function() {
+    btn.innerHTML = txtOrig;
+    btn.disabled  = false;
+    alert('Error de conexión.');
+  });
 }
 
 function compartirReporte() {
