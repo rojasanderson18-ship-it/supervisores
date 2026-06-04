@@ -194,6 +194,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .empty i{font-size:26px;display:block;margin-bottom:8px;}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--g600);color:#fff;padding:10px 16px;border-radius:var(--rr);font-size:13px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;display:flex;align-items:center;gap:6px;}
 .toast.show{opacity:1;}
+.cosech-option{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--tx);transition:background .1s;}
+.cosech-option:hover{background:var(--bg2);}
+.cosech-option input[type=checkbox]{width:16px;height:16px;accent-color:var(--g600);flex-shrink:0;}
+.cosech-selected{background:var(--g50);}
 .sync-banner{display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--b600);color:#fff;padding:8px 16px;border-radius:var(--rr);font-size:12px;font-weight:500;z-index:1000;align-items:center;gap:6px;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Reporte */
@@ -300,10 +304,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           </select>
         </div>
         <div class="fg">
-          <label>Cosechero</label>
-          <select id="sel-cosech" disabled>
-            <option value="">— elige supervisor primero —</option>
-          </select>
+          <label>Cosechero(s) / Cuadrilla</label>
+          <div id="cosech-wrap" style="position:relative;">
+            <div id="cosech-trigger" onclick="toggleCosechDropdown()"
+              style="padding:8px 10px;border-radius:var(--rr);border:.5px solid var(--bd2);
+                     background:var(--bg2);color:var(--tx2);font-size:13px;cursor:pointer;
+                     display:flex;justify-content:space-between;align-items:center;
+                     min-height:36px;user-select:none;">
+              <span id="cosech-label">— elige supervisor primero —</span>
+              <i class="ti ti-chevron-down" style="font-size:14px;flex-shrink:0;"></i>
+            </div>
+            <div id="cosech-dropdown"
+              style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;
+                     background:var(--bg);border:.5px solid var(--bd2);border-radius:var(--rr);
+                     box-shadow:0 4px 16px rgba(0,0,0,0.12);max-height:220px;overflow-y:auto;">
+              <div id="cosech-options"></div>
+
+            </div>
+          </div>
         </div>
       </div>
       <div class="frow">
@@ -873,17 +891,87 @@ function calFromPct(pct) {
 // ══ PERSONAL ═════════════════════════════════════════════════════════════════
 function onSupChange() {
   var idx = document.getElementById('sel-sup').value;
-  var sel = document.getElementById('sel-cosech');
-  if (idx === '') { sel.innerHTML = '<option value="">— elige supervisor primero —</option>'; sel.disabled = true; return; }
-  sel.disabled = false;
+  var label   = document.getElementById('cosech-label');
+  var options = document.getElementById('cosech-options');
+  var trigger = document.getElementById('cosech-trigger');
+  if (idx === '') {
+    label.textContent = '— elige supervisor primero —';
+    label.style.color = 'var(--tx3)';
+    options.innerHTML = '';
+    trigger.style.cursor = 'default';
+    return;
+  }
+  trigger.style.cursor = 'pointer';
+  label.style.color = 'var(--tx2)';
   var activos = personal.filter(function(p) { return p.supIdx === parseInt(idx) && p.activo; });
-  sel.innerHTML = '<option value="">Seleccionar cosechero...</option>';
+  options.innerHTML = '';
   activos.forEach(function(p) {
-    var o = document.createElement('option');
-    o.value = p.cod; o.textContent = p.cod + ' — ' + p.nombre;
-    sel.appendChild(o);
+    var div = document.createElement('div');
+    div.className = 'cosech-option';
+    div.innerHTML = '<input type="checkbox" id="chk-' + p.cod + '" value="' + p.cod + '" onchange="actualizarLabelCosech()">'
+      + '<label for="chk-' + p.cod + '" style="cursor:pointer;flex:1;">'
+      + '<b>' + p.cod + '</b> — ' + p.nombre + '</label>';
+    options.appendChild(div);
   });
+  actualizarLabelCosech();
   renderProgSup();
+}
+
+function toggleCosechDropdown() {
+  var dd  = document.getElementById('cosech-dropdown');
+  var idx = document.getElementById('sel-sup').value;
+  if (idx === '') return;
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+// Cerrar dropdown al tocar fuera
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('cosech-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    var dd = document.getElementById('cosech-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+function actualizarLabelCosech() {
+  var checks = document.querySelectorAll('#cosech-options input[type=checkbox]:checked');
+  var label  = document.getElementById('cosech-label');
+  if (checks.length === 0) {
+    label.textContent = 'Seleccionar cosechero(s)...';
+    label.style.color = 'var(--tx3)';
+  } else if (checks.length === 1) {
+    var lbl = checks[0].parentElement.querySelector('label');
+    label.textContent = lbl ? lbl.textContent.trim() : checks[0].value;
+    label.style.color = 'var(--tx)';
+  } else {
+    label.textContent = checks.length + ' cosecheros seleccionados';
+    label.style.color = 'var(--g600)';
+  }
+  // Resaltar opciones seleccionadas
+  document.querySelectorAll('#cosech-options .cosech-option').forEach(function(div) {
+    var chk = div.querySelector('input');
+    div.classList.toggle('cosech-selected', chk && chk.checked);
+  });
+}
+
+function seleccionarTodosCosech() {
+  document.querySelectorAll('#cosech-options input[type=checkbox]').forEach(function(c) { c.checked = true; });
+  actualizarLabelCosech();
+}
+
+function limpiarCosech() {
+  document.querySelectorAll('#cosech-options input[type=checkbox]').forEach(function(c) { c.checked = false; });
+  actualizarLabelCosech();
+}
+
+function getCosecherosSeleccionados() {
+  var checks = document.querySelectorAll('#cosech-options input[type=checkbox]:checked');
+  var result = [];
+  checks.forEach(function(c) {
+    var p = personal.find(function(x) { return x.cod === c.value; });
+    if (p) result.push(p);
+  });
+  return result;
 }
 
 function onFincaChange() {
@@ -991,7 +1079,8 @@ function mostrarErrorBanner(msg) {
 
 function guardar() {
   var supIdx    = document.getElementById('sel-sup').value;
-  var cosechCod = document.getElementById('sel-cosech').value;
+  var cosecheros = getCosecherosSeleccionados();
+  var cosechCod  = cosecheros.map(function(p){ return p.cod; }).join(', ');
   var finca     = document.getElementById('sel-finca').value;
   var selLote   = document.getElementById('sel-lote');
   var loteVal   = selLote.value;
@@ -1045,7 +1134,7 @@ function guardar() {
     action:       'guardar',
     supervisor:   SUPS[si],
     supIdx:       si,
-    cosechero:    cosechero ? cosechero.nombre : cosechCod,
+    cosechero:    cosecheros.map(function(p){ return p.nombre; }).join(' / '),
     cosechCod:    cosechCod,
     lote:         lote,
     finca:        finca,
