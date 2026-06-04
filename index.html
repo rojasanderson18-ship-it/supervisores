@@ -1312,6 +1312,28 @@ function sincronizarCola() {
   });
 }
 
+// ══ DESCARGA PDF DESDE BASE64 ════════════════════════════════════════════════
+function descargarBase64PDF(base64, filename) {
+  try {
+    var byteChars = atob(base64);
+    var byteNums  = new Array(byteChars.length);
+    for (var i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+    var byteArr = new Uint8Array(byteNums);
+    var blob    = new Blob([byteArr], { type: 'application/pdf' });
+    var url     = URL.createObjectURL(blob);
+    var a       = document.createElement('a');
+    a.href      = url;
+    a.download  = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+    return url;
+  } catch(e) {
+    console.error('Error descargando PDF:', e);
+    return null;
+  }
+}
+
 // ══ GAS ══════════════════════════════════════════════════════════════════════
 function enviarAGAS(payload) {
   if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') {
@@ -1907,9 +1929,11 @@ function descargarPDF() {
   .then(function(r) { return r.json(); })
   .then(function(d) {
     btn.innerHTML = txtOrig; btn.disabled = false;
-    if (d.ok && d.url) {
-      window.open(d.url, '_blank');
-      if (navigator.share) { setTimeout(function() { navigator.share({title: d.filename, url: d.url}).catch(function(){}); }, 800); }
+    if (d.ok && d.base64) {
+      var url = descargarBase64PDF(d.base64, d.filename);
+      if (navigator.share && url) {
+        setTimeout(function() { navigator.share({title: d.filename}).catch(function(){}); }, 1200);
+      }
     } else { alert('Error: ' + (d.error || 'No se pudo generar')); }
   })
   .catch(function() { btn.innerHTML = txtOrig; btn.disabled = false; alert('Error de conexion.'); });
@@ -2035,9 +2059,11 @@ function exportarHistorialPDF() {
   .then(function(r) { return r.json(); })
   .then(function(d) {
     btn.innerHTML = txtOrig; btn.disabled = false;
-    if (d.ok && d.url) {
-      window.open(d.url, '_blank');
-      if (navigator.share) { setTimeout(function() { navigator.share({title: d.filename, url: d.url}).catch(function(){}); }, 800); }
+    if (d.ok && d.base64) {
+      var url = descargarBase64PDF(d.base64, d.filename);
+      if (navigator.share && url) {
+        setTimeout(function() { navigator.share({title: d.filename}).catch(function(){}); }, 1200);
+      }
     } else { alert('Error: ' + (d.error || 'No se pudo generar')); }
   })
   .catch(function() { btn.innerHTML = txtOrig; btn.disabled = false; alert('Error de conexion.'); });
