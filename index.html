@@ -287,6 +287,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="tab" onclick="showTab('historial',this)"><i class="ti ti-list"></i> Historial</button>
     <button class="tab" onclick="showTab('personal',this)"><i class="ti ti-users"></i> Personal</button>
     <button class="tab" onclick="showTab('reportes',this)"><i class="ti ti-file-text"></i> Reportes</button>
+    <button class="tab" onclick="showTab('tendencias',this)"><i class="ti ti-chart-line"></i> Tendencias</button>
   </div>
 
   <!-- ══ REGISTRO ══ -->
@@ -624,6 +625,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
 
+  </div>
+
+  <!-- ══ TENDENCIAS ══ -->
+  <div class="sec" id="sec-tendencias">
+
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;">
+      <select id="tend-sup" onchange="renderTendencias()" style="padding:7px 10px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx);font-size:13px;outline:none;">
+        <option value="todos">Todos los supervisores</option>
+        <option value="Juan Carlos Oviedo">Juan Carlos Oviedo</option>
+        <option value="Brayan Pérez">Brayan Pérez</option>
+      </select>
+      <div style="display:flex;gap:3px;background:var(--bg2);border-radius:var(--rr);padding:3px;border:.5px solid var(--bd);">
+        <button id="tbtn-verde" class="tab active" onclick="setTendVista('verde',this)" style="flex:none;padding:6px 12px;font-size:12px;">% Verdes</button>
+        <button id="tbtn-cal"   class="tab" onclick="setTendVista('cal',this)"   style="flex:none;padding:6px 12px;font-size:12px;">Calificación</button>
+        <button id="tbtn-evals" class="tab" onclick="setTendVista('evals',this)" style="flex:none;padding:6px 12px;font-size:12px;">Evaluaciones</button>
+      </div>
+      <button onclick="cargarTendencias()" style="padding:7px 12px;background:var(--g50);border:.5px solid var(--g400);border-radius:var(--rr);font-size:12px;color:var(--g600);cursor:pointer;display:flex;align-items:center;gap:5px;">
+        <i class="ti ti-refresh"></i> Actualizar
+      </button>
+    </div>
+
+    <div class="metrics" id="tend-metrics"></div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;" id="tend-legend"></div>
+
+    <div style="position:relative;width:100%;height:300px;">
+      <canvas id="tend-chart" role="img" aria-label="Gráfica de tendencias de cosecheros por semana"></canvas>
+    </div>
+
+    <div id="tend-empty" class="empty" style="display:none;">
+      <i class="ti ti-chart-line" style="font-size:26px;display:block;margin-bottom:8px;"></i>
+      Cargando datos de tendencias...
+    </div>
   </div>
 
 </div><!-- /.app -->
@@ -2189,6 +2223,217 @@ function exportarHistorialPDF() {
   .catch(function() { btn.innerHTML = txtOrig; btn.disabled = false; alert('Error de conexion.'); });
 }
 
+// ══ TENDENCIAS ═══════════════════════════════════════════════════════════════
+var tendData = null;
+var tendVista = 'verde';
+var tendChart = null;
+
+var TEND_COLORS = ['#378ADD','#D85A30','#7F77DD','#1D9E75','#BA7517','#993556','#0F6E56','#639922','#185FA5','#854F0B'];
+var TEND_DASHES = [[],[6,3],[3,3],[8,4],[4,2],[2,4],[5,5],[7,3],[1,4],[9,3]];
+
+function setTendVista(v, btn) {
+  tendVista = v;
+  document.querySelectorAll('#sec-tendencias .tab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderTendencias();
+}
+
+function cargarTendencias() {
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') { renderTendencias(); return; }
+  var btn = document.querySelector('#sec-tendencias button[onclick="cargarTendencias()"]');
+  if (btn) { btn.innerHTML = '<i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i>'; btn.disabled = true; }
+  fetch(GAS_URL + '?action=getTendencias')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.ok) { tendData = d.data; renderTendencias(); }
+      if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; }
+    })
+    .catch(function(){ if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; } });
+}
+
+function calNum(pct) {
+  if (pct === null) return null;
+  if (pct <= 1) return 4; if (pct <= 3) return 3; if (pct <= 5) return 2; return 1;
+}
+function calLabel(n) {
+  if (n >= 4) return 'A'; if (n === 3) return 'B'; if (n === 2) return 'C'; return 'D';
+}
+
+function renderTendencias() {
+  if (!tendData) {
+    document.getElementById('tend-empty').style.display = 'block';
+    return;
+  }
+  document.getElementById('tend-empty').style.display = 'none';
+
+  var supFilt = document.getElementById('tend-sup').value;
+  var semanas = tendData.semanas || [];
+  var cosMap  = tendData.cosecheros || {};
+  var supMap  = tendData.supervisores || {};
+
+  // Filtrar cosecheros por supervisor
+  var cosList = Object.keys(cosMap).filter(function(cod) {
+    return supFilt === 'todos' || cosMap[cod].supervisor === supFilt;
+  });
+
+  var legend  = document.getElementById('tend-legend');
+  var metrics = document.getElementById('tend-metrics');
+
+  if (tendVista === 'verde' || tendVista === 'cal') {
+    var datasets = cosList.map(function(cod, i) {
+      var c    = cosMap[cod];
+      var col  = TEND_COLORS[i % TEND_COLORS.length];
+      var dash = TEND_DASHES[i % TEND_DASHES.length];
+      var data = tendVista === 'verde'
+        ? c.semanas
+        : c.semanas.map(function(v){ return v !== null ? calNum(v) : null; });
+      return {
+        label: c.nombre,
+        data: data,
+        borderColor: col,
+        backgroundColor: col + '15',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.35,
+        borderDash: dash,
+        fill: false,
+        spanGaps: true,
+      };
+    });
+
+    if (tendVista === 'verde') {
+      datasets.push({
+        label: 'Límite 3%',
+        data: semanas.map(function(){ return 3; }),
+        borderColor: '#E24B4A',
+        borderWidth: 1.5,
+        borderDash: [6,4],
+        pointRadius: 0,
+        fill: false,
+      });
+
+      // Métricas
+      var promsVerde = cosList.map(function(cod){
+        var vals = cosMap[cod].semanas.filter(function(v){ return v !== null; });
+        return vals.length ? vals.reduce(function(a,v){return a+v;},0)/vals.length : 0;
+      });
+      var promGlobal = promsVerde.length ? promsVerde.reduce(function(a,v){return a+v;},0)/promsVerde.length : 0;
+      var superan = promsVerde.filter(function(v){ return v > 3; }).length;
+      var mejoran = cosList.filter(function(cod){
+        var s = cosMap[cod].semanas.filter(function(v){ return v !== null; });
+        return s.length >= 2 && s[s.length-1] < s[s.length-2];
+      }).length;
+      metrics.innerHTML =
+        '<div class="mcard"><div class="mval" style="color:'+(promGlobal>3?'var(--r600)':'var(--g600)')+'">'+promGlobal.toFixed(1)+'%</div><div class="mlbl">Promedio % verde</div></div>'
+        +'<div class="mcard"><div class="mval" style="color:var(--r600)">'+superan+'</div><div class="mlbl">Sobre el límite</div></div>'
+        +'<div class="mcard"><div class="mval" style="color:var(--g600)">'+mejoran+'</div><div class="mlbl">Mejorando</div></div>'
+        +'<div class="mcard"><div class="mval">'+cosList.length+'</div><div class="mlbl">Cosecheros</div></div>';
+    } else {
+      var promA = cosList.filter(function(cod){
+        var s = cosMap[cod].semanas.filter(function(v){ return v!==null; });
+        var p = s.length ? s.reduce(function(a,v){return a+v;},0)/s.length : 0;
+        return p <= 1;
+      }).length;
+      var promCD = cosList.filter(function(cod){
+        var s = cosMap[cod].semanas.filter(function(v){ return v!==null; });
+        var p = s.length ? s.reduce(function(a,v){return a+v;},0)/s.length : 0;
+        return p > 3;
+      }).length;
+      metrics.innerHTML =
+        '<div class="mcard"><div class="mval" style="color:var(--g600)">'+promA+'</div><div class="mlbl">Promedio A</div></div>'
+        +'<div class="mcard"><div class="mval" style="color:var(--r600)">'+promCD+'</div><div class="mlbl">Promedio C/D</div></div>'
+        +'<div class="mcard"><div class="mval">'+cosList.length+'</div><div class="mlbl">Cosecheros</div></div>';
+    }
+
+    legend.innerHTML = cosList.map(function(cod, i){
+      var col = TEND_COLORS[i % TEND_COLORS.length];
+      return '<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);">'
+        +'<span style="width:24px;height:3px;border-radius:2px;background:'+col+';flex-shrink:0;"></span>'
+        + cosMap[cod].nombre + '</span>';
+    }).join('') + (tendVista==='verde' ? '<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--r600);"><span style="width:24px;height:2px;background:#E24B4A;flex-shrink:0;border-top:2px dashed #E24B4A;height:0;margin-top:1px;"></span>Límite 3%</span>' : '');
+
+    var yConfig = tendVista === 'verde'
+      ? { min:0, max:8, ticks:{ callback:function(v){return v+'%';} }, grid:{color:'rgba(0,0,0,0.05)'} }
+      : { min:0.5, max:4.5, ticks:{ stepSize:1, callback:function(v){ return v===4?'A':v===3?'B':v===2?'C':v===1?'D':''; } }, grid:{color:'rgba(0,0,0,0.05)'} };
+
+    buildTendChart(semanas, datasets, yConfig, function(ctx){
+      if (ctx.dataset.label === 'Límite 3%') return null;
+      var v = ctx.parsed.y;
+      if (tendVista === 'verde') {
+        var cal = v<=1?'A':v<=3?'B':v<=5?'C':'D';
+        return ctx.dataset.label + ': ' + v.toFixed(1) + '% · ' + cal;
+      }
+      return ctx.dataset.label + ': ' + calLabel(Math.round(v));
+    });
+
+  } else {
+    // Evaluaciones por supervisor
+    var supKeys = supFilt === 'todos' ? Object.keys(supMap) : [supFilt];
+    var SUP_COLORS = {'Juan Carlos Oviedo':'#3B6D11','Brayan Pérez':'#185FA5'};
+    var totalEvals = 0;
+    supKeys.forEach(function(k){ (supMap[k]||{semanas:[]}).semanas.forEach(function(v){ totalEvals+=v; }); });
+    metrics.innerHTML =
+      '<div class="mcard"><div class="mval">'+totalEvals+'</div><div class="mlbl">Total evaluaciones</div></div>'
+      +'<div class="mcard"><div class="mval" style="color:var(--a600)">4</div><div class="mlbl">Meta diaria por sup.</div></div>';
+
+    legend.innerHTML = supKeys.map(function(k){
+      var col = SUP_COLORS[k] || '#888';
+      return '<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);">'
+        +'<span style="width:24px;height:3px;border-radius:2px;background:'+col+';flex-shrink:0;"></span>'+k+'</span>';
+    }).join('') + '<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--a600);"><span style="width:24px;height:0;border-top:2px dashed #EF9F27;flex-shrink:0;"></span>Meta 4</span>';
+
+    var datasets = supKeys.map(function(k){
+      var col = SUP_COLORS[k] || '#888';
+      return {
+        label: k,
+        data: (supMap[k]||{semanas:[]}).semanas,
+        borderColor: col,
+        backgroundColor: col+'20',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        tension: 0.3,
+        fill: true,
+        spanGaps: true,
+      };
+    });
+    datasets.push({
+      label: 'Meta 4',
+      data: semanas.map(function(){ return 4; }),
+      borderColor: '#EF9F27',
+      borderWidth: 1.5,
+      borderDash: [6,4],
+      pointRadius: 0,
+      fill: false,
+    });
+
+    buildTendChart(semanas, datasets,
+      { min:0, ticks:{stepSize:1, callback:function(v){return v+' eval';}}, grid:{color:'rgba(0,0,0,0.05)'} },
+      function(ctx){ if(ctx.dataset.label==='Meta 4') return null; return ctx.dataset.label+': '+ctx.parsed.y+' evaluaciones'; }
+    );
+  }
+}
+
+function buildTendChart(labels, datasets, yConfig, tooltipCb) {
+  if (tendChart) { tendChart.destroy(); }
+  tendChart = new Chart(document.getElementById('tend-chart'), {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: tooltipCb } }
+      },
+      scales: {
+        x: { ticks:{ font:{size:11}, color:'#888', autoSkip:true, maxRotation:45 }, grid:{color:'rgba(0,0,0,0.04)'} },
+        y: yConfig
+      }
+    }
+  });
+}
+
 // ══ NAVEGACIÓN ═══════════════════════════════════════════════════════════════
 function showTab(id, btn) {
   document.querySelectorAll('.sec').forEach(function(s) { s.classList.remove('active'); });
@@ -2225,5 +2470,6 @@ function showTab(id, btn) {
   }
 }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </body>
 </html>
