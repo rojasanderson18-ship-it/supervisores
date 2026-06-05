@@ -298,6 +298,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="sec active" id="sec-registro">
 
     <div id="prog-sup-wrap"></div>
+    <div id="cola-banner" style="display:none;background:var(--a50);border:.5px solid var(--a400);border-radius:var(--rr);padding:9px 13px;margin-bottom:6px;display:none;align-items:center;gap:8px;">
+      <i class="ti ti-clock-upload" style="color:var(--a600);font-size:16px;"></i>
+      <span style="flex:1;font-size:12px;color:var(--a600);" id="cola-txt">Tienes evaluaciones pendientes de enviar</span>
+      <button onclick="sincronizarCola()" style="padding:5px 12px;background:var(--a600);color:#fff;border:none;border-radius:var(--rr);font-size:12px;cursor:pointer;">
+        Enviar ahora
+      </button>
+    </div>
 
     <!-- 1. Supervisor + Cosechero -->
     <div class="card">
@@ -646,18 +653,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button id="tbtn-evals" class="tab" onclick="setTendVista('evals',this)" style="flex:none;padding:6px 12px;font-size:12px;">Evaluaciones</button>
       </div>
       <button onclick="cargarTendencias()" style="padding:7px 12px;background:var(--g50);border:.5px solid var(--g400);border-radius:var(--rr);font-size:12px;color:var(--g600);cursor:pointer;display:flex;align-items:center;gap:5px;">
-        <i class="ti ti-refresh"></i> Actualizar
-      </button>
+        <i class="ti ti-refresh">
+ Actualizar</button>
     </div>
 
     <div class="metrics" id="tend-metrics"></div>
-
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;" id="tend-legend"></div>
-
     <div style="position:relative;width:100%;height:300px;">
       <canvas id="tend-chart" role="img" aria-label="Gráfica de tendencias de cosecheros por semana"></canvas>
     </div>
-
     <div id="tend-empty" class="empty" style="display:none;">
       <i class="ti ti-chart-line" style="font-size:26px;display:block;margin-bottom:8px;"></i>
       Cargando datos de tendencias...
@@ -1500,6 +1504,17 @@ function actualizarBadgeCola() {
   var cola  = leerCola();
   var badge = document.getElementById('offline-pending');
   if (badge) badge.textContent = cola.length + ' pendiente' + (cola.length !== 1 ? 's' : '');
+  // Mostrar banner de cola pendiente en el registro
+  var banner = document.getElementById('cola-banner');
+  var txt    = document.getElementById('cola-txt');
+  if (banner) {
+    if (cola.length > 0) {
+      banner.style.display = 'flex';
+      if (txt) txt.textContent = cola.length + ' evaluación(es) pendiente(s) de enviar al Sheet';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
 }
 
 function sincronizarCola() {
@@ -1511,8 +1526,7 @@ function sincronizarCola() {
     return fetch(GAS_URL, { method:'POST', body: JSON.stringify(payload) })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.ok || d.duplicado) return payload.id; // éxito o ya existía → quitar de cola
-        return null;
+        return (d.ok || d.duplicado) ? payload.id : null;
       })
       .catch(function() { return null; });
   });
@@ -1520,10 +1534,14 @@ function sincronizarCola() {
   Promise.all(promesas).then(function(resultados) {
     var exitosos = resultados.filter(function(id) { return id !== null; });
     if (exitosos.length > 0) {
-      var cola = leerCola().filter(function(x) { return !exitosos.includes(x.id); });
-      guardarCola(cola);
+      var colaActual = leerCola().filter(function(x) { return exitosos.indexOf(x.id) === -1; });
+      guardarCola(colaActual);
       actualizarBadgeCola();
-      console.log('Sincronizados ' + exitosos.length + ' registros.');
+      mostrarToast(exitosos.length + ' evaluación(es) sincronizadas al Sheet');
+    }
+    var restantes = leerCola().length;
+    if (restantes > 0) {
+      mostrarToast(restantes + ' evaluación(es) pendientes — sin señal');
     }
   });
 }
@@ -1553,24 +1571,29 @@ function descargarBase64PDF(base64, filename) {
 // ══ GAS ══════════════════════════════════════════════════════════════════════
 function enviarAGAS(payload) {
   if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') {
-    agregarACola(payload); // Sin URL configurada, guardar en cola
+    agregarACola(payload);
     return;
   }
   if (!navigator.onLine) {
     agregarACola(payload);
+    mostrarToast('Sin señal — evaluación guardada para sincronizar');
     return;
   }
   fetch(GAS_URL, { method:'POST', body: JSON.stringify(payload) })
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      if (!d.ok && !d.duplicado) {
-        console.warn('GAS error, guardando en cola:', d.error);
+      if (d.ok || d.duplicado) {
+        mostrarToast('Evaluación guardada en el Sheet');
+      } else {
+        console.warn('GAS error:', d.error);
         agregarACola(payload);
+        mostrarToast('Error al guardar — en cola para reintento');
       }
     })
     .catch(function(e) {
-      console.warn('Sin red, guardando en cola:', e);
+      console.warn('Sin red:', e);
       agregarACola(payload);
+      mostrarToast('Sin señal — evaluación guardada para sincronizar');
     });
 }
 
@@ -2622,8 +2645,8 @@ function showTab(id, btn) {
     }
     return;
   }
-}
-</script>
+}</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </body>
 </html>
