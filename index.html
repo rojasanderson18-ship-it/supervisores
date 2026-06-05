@@ -200,6 +200,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cosech-option input[type=checkbox]{width:22px;height:22px;accent-color:var(--g600);flex-shrink:0;cursor:pointer;}
 .cosech-selected{background:var(--g50);}
 .cosech-selected label{color:var(--g600);font-weight:600;}
+.firma-wrap{background:var(--bg);border:.5px solid var(--bd2);border-radius:var(--rrl);padding:1rem;margin-bottom:.875rem;}
+.firma-canvas{width:100%;height:160px;border:.5px solid var(--bd2);border-radius:var(--rr);background:#fff;cursor:crosshair;touch-action:none;display:block;}
+.firma-canvas.firmado{border-color:var(--g400);}
+.firma-btns{display:flex;gap:8px;margin-top:8px;}
 .sync-banner{display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--b600);color:#fff;padding:8px 16px;border-radius:var(--rr);font-size:12px;font-weight:500;z-index:1000;align-items:center;gap:6px;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Reporte */
@@ -774,6 +778,7 @@ window.addEventListener('DOMContentLoaded', function() {
   renderPersonal();
   actualizarBadgeCola();
   cargarDesdeGAS();
+  initFirma();
 
   // Detectar cambios de conexión
   window.addEventListener('offline', function() {
@@ -929,10 +934,11 @@ function calFromPct(pct) {
 
 // ══ PERSONAL ═════════════════════════════════════════════════════════════════
 function onSupChange() {
-  var idx = document.getElementById('sel-sup').value;
+  var idx     = document.getElementById('sel-sup').value;
   var label   = document.getElementById('cosech-label');
   var options = document.getElementById('cosech-options');
   var trigger = document.getElementById('cosech-trigger');
+
   if (idx === '') {
     label.textContent = '— elige supervisor primero —';
     label.style.color = 'var(--tx3)';
@@ -940,10 +946,48 @@ function onSupChange() {
     trigger.style.cursor = 'default';
     return;
   }
+
   trigger.style.cursor = 'pointer';
   label.style.color = 'var(--tx2)';
+
+  // Si no hay personal cargado, intentar cargar desde GAS
+  if (personal.length === 0) {
+    options.innerHTML = '<div style="padding:14px 12px;font-size:13px;color:var(--tx2);display:flex;align-items:center;gap:8px;">'
+      + '<i class="ti ti-refresh" style="animation:spin 1s linear infinite;font-size:16px;"></i> Cargando personal...</div>';
+    label.textContent = 'Cargando...';
+    cargarDesdeGAS().then(function() {
+      if (personal.length === 0) {
+        // Sin datos del GAS — usar respaldo local
+        personal = PERSONAL_BACKUP.slice();
+        mostrarToast('Personal cargado desde respaldo local');
+      }
+      poblarCosecheros(idx);
+    }).catch(function() {
+      personal = PERSONAL_BACKUP.slice();
+      poblarCosecheros(idx);
+    });
+    return;
+  }
+
+  poblarCosecheros(idx);
+}
+
+function poblarCosecheros(idx) {
+  var options = document.getElementById('cosech-options');
+  var label   = document.getElementById('cosech-label');
   var activos = personal.filter(function(p) { return p.supIdx === parseInt(idx) && p.activo; });
+
   options.innerHTML = '';
+
+  if (activos.length === 0) {
+    options.innerHTML = '<div style="padding:14px 12px;font-size:13px;color:var(--tx3);text-align:center;">'
+      + '<i class="ti ti-users-off" style="display:block;font-size:20px;margin-bottom:6px;"></i>'
+      + 'Sin cosecheros activos.<br>Verifica la hoja Personal en el Sheet.</div>';
+    label.textContent = 'Sin cosecheros disponibles';
+    label.style.color = 'var(--tx3)';
+    return;
+  }
+
   activos.forEach(function(p) {
     var div = document.createElement('div');
     div.className = 'cosech-option';
@@ -952,8 +996,17 @@ function onSupChange() {
       + '<b>' + p.cod + '</b> — ' + p.nombre + '</label>';
     options.appendChild(div);
   });
+
   actualizarLabelCosech();
   renderProgSup();
+}
+
+function mostrarToast(msg) {
+  var t = document.getElementById('toast');
+  var orig = t.innerHTML;
+  t.innerHTML = '<i class="ti ti-info-circle"></i> ' + msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); t.innerHTML = orig; }, 3000);
 }
 
 function toggleCosechDropdown() {
@@ -1215,6 +1268,7 @@ function guardar() {
     pctVerde:     pctVerde,
     cal:          cal,
     obs:          document.getElementById('inp-obs').value,
+    firma:        getFirmaBase64(),
     pts:          {suelto: pts.suelto, danio: pts.danio, pedu: pts.pedu, hoja: pts.hoja},
     prom:         Math.round(calcP(pts) * 10) / 10
   };
@@ -1244,6 +1298,7 @@ function guardar() {
   pts = {};
   renderCriterios();
   renderProgSup();
+  resetFirma();
 }
 
 // ══ PROGRESO DIARIO ══════════════════════════════════════════════════════════
@@ -1558,6 +1613,21 @@ function cargarDesdeGAS() {
 
 // ══ PERSONAL ════════════════════════════════════════════════════════════════
 // Se carga desde Google Sheets al iniciar
+// Respaldo local por si no hay conexión al abrir
+var PERSONAL_BACKUP = [
+  // Juan Carlos Oviedo — reemplazar con los reales
+  {cod:'C001', nombre:'Cosechero 1', supIdx:0, activo:true},
+  {cod:'C002', nombre:'Cosechero 2', supIdx:0, activo:true},
+  {cod:'C003', nombre:'Cosechero 3', supIdx:0, activo:true},
+  {cod:'C004', nombre:'Cosechero 4', supIdx:0, activo:true},
+  {cod:'C005', nombre:'Cosechero 5', supIdx:0, activo:true},
+  // Brayan Pérez — reemplazar con los reales
+  {cod:'C006', nombre:'Cosechero 6', supIdx:1, activo:true},
+  {cod:'C007', nombre:'Cosechero 7', supIdx:1, activo:true},
+  {cod:'C008', nombre:'Cosechero 8', supIdx:1, activo:true},
+  {cod:'C009', nombre:'Cosechero 9', supIdx:1, activo:true},
+  {cod:'C010', nombre:'Cosechero 10',supIdx:1, activo:true},
+];
 var personal = [];
 var editandoCod = null;
 
@@ -2432,6 +2502,84 @@ function buildTendChart(labels, datasets, yConfig, tooltipCb) {
       }
     }
   });
+}
+
+// ══ FIRMA DIGITAL ════════════════════════════════════════════════════════════
+var firmaCtx = null;
+var firmaDibujando = false;
+var firmaVacia = true;
+
+function initFirma() {
+  var canvas = document.getElementById('firma-canvas');
+  if (!canvas) return;
+  firmaCtx = canvas.getContext('2d');
+  firmaCtx.strokeStyle = '#1a1a18';
+  firmaCtx.lineWidth   = 2.5;
+  firmaCtx.lineCap     = 'round';
+  firmaCtx.lineJoin    = 'round';
+
+  // Mouse
+  canvas.addEventListener('mousedown',  firmaStart);
+  canvas.addEventListener('mousemove',  firmaDraw);
+  canvas.addEventListener('mouseup',    firmaEnd);
+  canvas.addEventListener('mouseleave', firmaEnd);
+
+  // Touch
+  canvas.addEventListener('touchstart',  function(e){ e.preventDefault(); firmaStart(e.touches[0]); }, {passive:false});
+  canvas.addEventListener('touchmove',   function(e){ e.preventDefault(); firmaDraw(e.touches[0]);  }, {passive:false});
+  canvas.addEventListener('touchend',    function(e){ e.preventDefault(); firmaEnd();               }, {passive:false});
+}
+
+function firmaPos(e) {
+  var canvas = document.getElementById('firma-canvas');
+  var rect   = canvas.getBoundingClientRect();
+  var scaleX = canvas.width  / rect.width;
+  var scaleY = canvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top)  * scaleY
+  };
+}
+
+function firmaStart(e) {
+  firmaDibujando = true;
+  var pos = firmaPos(e);
+  firmaCtx.beginPath();
+  firmaCtx.moveTo(pos.x, pos.y);
+}
+
+function firmaDraw(e) {
+  if (!firmaDibujando) return;
+  var pos = firmaPos(e);
+  firmaCtx.lineTo(pos.x, pos.y);
+  firmaCtx.stroke();
+  if (firmaVacia) {
+    firmaVacia = false;
+    document.getElementById('firma-canvas').classList.add('firmado');
+    document.getElementById('firma-status').innerHTML = '<i class="ti ti-check" style="color:var(--g600)"></i> <span style="color:var(--g600);">Firma registrada</span>';
+  }
+}
+
+function firmaEnd() {
+  firmaDibujando = false;
+  firmaCtx.beginPath();
+}
+
+function limpiarFirma() {
+  var canvas = document.getElementById('firma-canvas');
+  firmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+  firmaVacia = true;
+  canvas.classList.remove('firmado');
+  document.getElementById('firma-status').innerHTML = '<i class="ti ti-pencil"></i> Dibuja la firma arriba';
+}
+
+function getFirmaBase64() {
+  if (firmaVacia) return null;
+  return document.getElementById('firma-canvas').toDataURL('image/png');
+}
+
+function resetFirma() {
+  limpiarFirma();
 }
 
 // ══ NAVEGACIÓN ═══════════════════════════════════════════════════════════════
