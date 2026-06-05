@@ -957,13 +957,20 @@ function onSupChange() {
     label.textContent = 'Cargando...';
     cargarDesdeGAS().then(function() {
       if (personal.length === 0) {
-        // Sin datos del GAS — usar respaldo local
-        personal = PERSONAL_BACKUP.slice();
-        mostrarToast('Personal cargado desde respaldo local');
+        // Sin datos del GAS — intentar caché una vez más
+        var cached = leerPersonalCache();
+        if (cached.length > 0) {
+          personal = cached;
+          mostrarToast('Personal cargado desde caché local');
+        }
       }
       poblarCosecheros(idx);
     }).catch(function() {
-      personal = PERSONAL_BACKUP.slice();
+      var cached = leerPersonalCache();
+      if (cached.length > 0) {
+        personal = cached;
+        mostrarToast('Sin conexión — usando último listado guardado');
+      }
       poblarCosecheros(idx);
     });
     return;
@@ -1578,6 +1585,7 @@ function cargarDesdeGAS() {
     .then(function(data) {
       if (data.ok && data.data.length > 0) {
         personal = data.data;
+        guardarPersonalCache(personal);
         renderPersonal();
         renderProgSup();
       }
@@ -1612,24 +1620,21 @@ function cargarDesdeGAS() {
 }
 
 // ══ PERSONAL ════════════════════════════════════════════════════════════════
-// Se carga desde Google Sheets al iniciar
-// Respaldo local por si no hay conexión al abrir
-var PERSONAL_BACKUP = [
-  // Juan Carlos Oviedo — reemplazar con los reales
-  {cod:'C001', nombre:'Cosechero 1', supIdx:0, activo:true},
-  {cod:'C002', nombre:'Cosechero 2', supIdx:0, activo:true},
-  {cod:'C003', nombre:'Cosechero 3', supIdx:0, activo:true},
-  {cod:'C004', nombre:'Cosechero 4', supIdx:0, activo:true},
-  {cod:'C005', nombre:'Cosechero 5', supIdx:0, activo:true},
-  // Brayan Pérez — reemplazar con los reales
-  {cod:'C006', nombre:'Cosechero 6', supIdx:1, activo:true},
-  {cod:'C007', nombre:'Cosechero 7', supIdx:1, activo:true},
-  {cod:'C008', nombre:'Cosechero 8', supIdx:1, activo:true},
-  {cod:'C009', nombre:'Cosechero 9', supIdx:1, activo:true},
-  {cod:'C010', nombre:'Cosechero 10',supIdx:1, activo:true},
-];
+// Personal — se carga del GAS y se cachea en localStorage
+var PERSONAL_KEY = 'palma_personal_cache';
 var personal = [];
 var editandoCod = null;
+
+function guardarPersonalCache(data) {
+  try { localStorage.setItem(PERSONAL_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function leerPersonalCache() {
+  try {
+    var raw = localStorage.getItem(PERSONAL_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
 
 function guardarPersonal() {
   // Los cosecheros se agregan directamente en el Google Sheet (hoja "Personal")
@@ -1665,6 +1670,7 @@ function toggleActivo(cod) {
   if (!p) return;
   var nuevoEstado = !p.activo;
   p.activo = nuevoEstado;
+  guardarPersonalCache(personal);
   renderPersonal();
   // Sincronizar con Google Sheets
   if (GAS_URL && GAS_URL !== 'TU_URL_GAS_AQUI') {
