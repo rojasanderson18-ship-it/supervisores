@@ -2731,7 +2731,11 @@ function verificarPinMapa() {
 }
 
 function iniciarMapa() {
-  if (mapaMap) return;
+  if (mapaMap) {
+    mapaMap.invalidateSize();
+    cargarMapa();
+    return;
+  }
   // Coordenadas aproximadas de Palma Grande (Colombia)
   mapaMap = L.map('mapa-container').setView([7.5, -73.5], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -2747,8 +2751,9 @@ function cargarMapa() {
   var supFilt = document.getElementById('mapa-sup').value;
   if (!fecha) return;
 
-  var container = document.getElementById('mapa-container');
-  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--tx2);font-size:13px;"><i class="ti ti-refresh" style="animation:spin 1s linear infinite;font-size:18px;"></i> Cargando datos...</div>';
+  document.getElementById('mapa-metrics').innerHTML =
+    '<div class="mcard" style="grid-column:span 4;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--tx2);font-size:13px;">'
+    +'<i class="ti ti-refresh" style="animation:spin 1s linear infinite;font-size:18px;"></i> Cargando datos...</div>';
 
   // Cargar evaluaciones y ruta en paralelo
   var promEvals = evals.length === 0 ? cargarDesdeGAS() : Promise.resolve();
