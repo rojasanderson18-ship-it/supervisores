@@ -2740,13 +2740,23 @@ function iniciarMapa() {
 
 function cargarMapa() {
   if (!mapaMap) return;
-  var fecha  = document.getElementById('mapa-fecha').value;
+  var fecha   = document.getElementById('mapa-fecha').value;
   var supFilt = document.getElementById('mapa-sup').value;
   if (!fecha) return;
 
-  // Cargar evaluaciones si no están en memoria
-  var promesa = evals.length === 0 ? cargarDesdeGAS() : Promise.resolve();
-  promesa.then(function() { renderMapa(fecha, supFilt); });
+  var container = document.getElementById('mapa-container');
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--tx2);font-size:13px;"><i class="ti ti-refresh" style="animation:spin 1s linear infinite;font-size:18px;"></i> Cargando datos...</div>';
+
+  // Cargar evaluaciones y ruta en paralelo
+  var promEvals = evals.length === 0 ? cargarDesdeGAS() : Promise.resolve();
+  var promRuta  = fetch(GAS_URL + '?action=getRuta&fecha=' + fecha)
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.ok) rutaData = d.puntos; })
+    .catch(function() { rutaData = []; });
+
+  Promise.all([promEvals, promRuta]).then(function() {
+    renderMapa(fecha, supFilt);
+  });
 }
 
 function renderMapa(fecha, supFilt) {
@@ -2765,7 +2775,12 @@ function renderMapa(fecha, supFilt) {
 
   var metrics = document.getElementById('mapa-metrics');
   var puntos  = document.getElementById('mapa-puntos');
-  var trackPts = getTrackDia(fecha, supFilt);
+  // Ruta viene del Sheet (ya cargada en rutaData)
+  var trackPts = (rutaData || []).filter(function(p) {
+    var fechaOk = p.fecha === fecha;
+    var supOk   = supFilt === 'todos' || p.sup === supFilt;
+    return fechaOk && supOk;
+  }).sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
 
   if (evsFecha.length === 0 && trackPts.length === 0) {
     metrics.innerHTML = '<div class="mcard" style="grid-column:span 4;text-align:center;"><div class="empty" style="padding:.5rem;"><i class="ti ti-map-off" style="display:block;font-size:20px;margin-bottom:4px;"></i>Sin datos de ubicación para esta fecha</div></div>';
@@ -2871,6 +2886,7 @@ function renderMapa(fecha, supFilt) {
 var TRACKER_KEY   = 'palma_gps_track';
 var trackInterval = null;
 var trackActivo   = false;
+var rutaData      = null;  // Puntos de ruta cargados del Sheet
 
 function iniciarTracker() {
   if (!navigator.geolocation) return;
@@ -2880,14 +2896,68 @@ function iniciarTracker() {
   // Registrar punto inmediatamente
   registrarPuntoGPS();
 
-  // Registrar cada 60 segundos
+  // Registrar GPS cada 60 segundos
   trackInterval = setInterval(registrarPuntoGPS, 60000);
+
+  // Enviar puntos acumulados al Sheet cada 5 minutos
+  setInterval(enviarPuntosAlSheet, 5 * 60 * 1000);
+}
+
+function enviarPuntosAlSheet() {
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return;
+  var supIdx = document.getElementById('sel-sup') ? document.getElementById('sel-sup').value : '';
+  if (supIdx === '') return;
+
+  var track = [];
+  try { track = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]'); } catch(e) {}
+
+  // Solo enviar puntos de hoy que no hayan sido enviados
+  var hoy = new Date().toISOString().split('T')[0];
+  var ENVIADOS_KEY = 'palma_track_enviados';
+  var enviados = [];
+  try { enviados = JSON.parse(localStorage.getItem(ENVIADOS_KEY) || '[]'); } catch(e) {}
+
+  var nuevos = track.filter(function(p) {
+    return p.fecha === hoy && !enviados.includes(p.ts);
+  });
+
+  if (!nuevos.length) return;
+
+  fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'guardarRuta', puntos: nuevos })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      // Marcar como enviados
+      var tsEnviados = nuevos.map(function(p) { return p.ts; });
+      var yaEnviados = enviados.concat(tsEnviados);
+      // Mantener solo los últimos 500
+      if (yaEnviados.length > 500) yaEnviados = yaEnviados.slice(-500);
+      try { localStorage.setItem(ENVIADOS_KEY, JSON.stringify(yaEnviados)); } catch(e) {}
+    }
+  })
+  .catch(function() {}); // Silencioso — reintentará en 5 min
 }
 
 function registrarPuntoGPS() {
   if (!navigator.geolocation) return;
   var supIdx = document.getElementById('sel-sup') ? document.getElementById('sel-sup').value : '';
   if (supIdx === '') return;
+
+  // Parar tracking después de las 1:45 PM
+  var ahora = new Date();
+  var horas = ahora.getHours();
+  var mins  = ahora.getMinutes();
+  if (horas > 13 || (horas === 13 && mins >= 45)) {
+    if (trackActivo) {
+      clearInterval(trackInterval);
+      trackActivo = false;
+      enviarPuntosAlSheet(); // Enviar último lote antes de parar
+    }
+    return;
+  }
 
   // Primer intento con alta precisión
   navigator.geolocation.getCurrentPosition(
@@ -2952,7 +3022,12 @@ function exportarKML() {
     var supOk = supFilt === 'todos' || e.supervisor === supFilt;
     return e.fecha === fecha && supOk && e.lat && e.lng;
   });
-  var trackPts = getTrackDia(fecha, supFilt);
+  // Ruta viene del Sheet (ya cargada en rutaData)
+  var trackPts = (rutaData || []).filter(function(p) {
+    var fechaOk = p.fecha === fecha;
+    var supOk   = supFilt === 'todos' || p.sup === supFilt;
+    return fechaOk && supOk;
+  }).sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
   if (!evsFecha.length && !trackPts.length) { alert('No hay datos de ubicación para esta fecha.'); return; }
 
   var supColors = {'Juan Carlos Oviedo':'jco','Brayan Pérez':'bp'};
