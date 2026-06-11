@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Supervisión Calidad Cosecha — Palma Grande</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3B6D11">
@@ -292,6 +293,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="tab" onclick="showTab('personal',this)"><i class="ti ti-users"></i> Personal</button>
     <button class="tab" onclick="showTab('reportes',this)"><i class="ti ti-file-text"></i> Reportes</button>
     <button class="tab" onclick="showTab('tendencias',this)"><i class="ti ti-chart-line"></i> Tendencias</button>
+    <button class="tab" onclick="showTab('mapa',this)"><i class="ti ti-map-pin"></i> Mapa</button>
   </div>
 
   <!-- ══ REGISTRO ══ -->
@@ -668,6 +670,70 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
+  <!-- ══ MAPA ══ -->
+  <div class="sec" id="sec-mapa">
+
+    <!-- PIN de acceso -->
+    <div id="mapa-pin-wrap" class="card" style="max-width:320px;margin:0 auto;text-align:center;padding:1.5rem;">
+      <i class="ti ti-map-2" style="font-size:32px;color:var(--g600);display:block;margin-bottom:10px;"></i>
+      <div style="font-size:14px;font-weight:600;color:var(--tx);margin-bottom:4px;">Acceso restringido</div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:16px;">Ingresa tu PIN para ver el mapa de rutas</div>
+      <input type="password" id="mapa-pin-input" maxlength="4" placeholder="PIN"
+        style="width:120px;text-align:center;font-size:20px;letter-spacing:8px;padding:10px;
+               border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);
+               color:var(--tx);outline:none;margin-bottom:12px;display:block;margin:0 auto 12px;"
+        onkeyup="if(this.value.length===4) verificarPinMapa()">
+      <button onclick="verificarPinMapa()" class="bsave" style="width:120px;margin:0 auto;">
+        Entrar
+      </button>
+      <div id="mapa-pin-error" style="color:var(--r600);font-size:12px;margin-top:8px;display:none;">PIN incorrecto</div>
+    </div>
+
+    <!-- Contenido del mapa (se muestra tras PIN correcto) -->
+    <div id="mapa-contenido" style="display:none;">
+
+      <!-- Filtros -->
+      <div class="card" style="padding:.875rem 1.25rem;margin-bottom:.875rem;">
+        <div class="frow" style="margin-bottom:0;">
+          <div class="fg">
+            <label>Fecha</label>
+            <input type="date" id="mapa-fecha" onchange="cargarMapa()">
+          </div>
+          <div class="fg">
+            <label>Supervisor</label>
+            <select id="mapa-sup" onchange="cargarMapa()">
+              <option value="todos">Todos</option>
+              <option value="Juan Carlos Oviedo">Juan Carlos Oviedo</option>
+              <option value="Brayan Pérez">Brayan Pérez</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button onclick="cargarMapa()" style="flex:1;padding:8px;background:var(--g50);border:.5px solid var(--g400);border-radius:var(--rr);font-size:12px;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+            <i class="ti ti-refresh"></i> Actualizar
+          </button>
+          <button onclick="exportarKML()" style="flex:1;padding:8px;background:#1a6d3e;color:#fff;border:none;border-radius:var(--rr);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+            <i class="ti ti-brand-google-maps"></i> Exportar KML
+          </button>
+        </div>
+      </div>
+
+      <!-- Métricas rápidas -->
+      <div class="metrics" id="mapa-metrics" style="margin-bottom:.875rem;"></div>
+
+      <!-- Mapa -->
+      <div style="border-radius:var(--rrl);overflow:hidden;border:.5px solid var(--bd);margin-bottom:.875rem;">
+        <div id="mapa-container" style="height:400px;background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+          <div class="empty"><i class="ti ti-map" style="font-size:26px;display:block;margin-bottom:8px;"></i>Selecciona una fecha para ver la ruta</div>
+        </div>
+      </div>
+
+      <!-- Lista de puntos -->
+      <div id="mapa-puntos"></div>
+
+    </div>
+  </div>
+
 </div><!-- /.app -->
 
 <script>
@@ -1010,6 +1076,8 @@ function poblarCosecheros(idx) {
 
   actualizarLabelCosech();
   renderProgSup();
+  // Iniciar tracker GPS
+  iniciarTracker();
 }
 
 function mostrarToast(msg) {
@@ -1280,14 +1348,42 @@ function guardar() {
     cal:          cal,
     obs:          document.getElementById('inp-obs').value,
     firma:        getFirmaBase64(),
+    lat:          null,
+    lng:          null,
+    hora:         new Date().toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'}),
     pts:          {suelto: pts.suelto, danio: pts.danio, pedu: pts.pedu, hoja: pts.hoja},
     prom:         Math.round(calcP(pts) * 10) / 10
   };
 
   evals.push(registro);
 
-  // Enviar al GAS (o encolar si no hay señal)
-  enviarAGAS(registro);
+  // Obtener ubicación GPS al guardar
+  if (navigator.geolocation) {
+    // Intentar obtener ubicación precisa (máx 50m de error)
+    var gpsOpts = { timeout:8000, maximumAge:0, enableHighAccuracy:true };
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        var lat = Math.round(pos.coords.latitude  * 1000000) / 1000000;
+        var lng = Math.round(pos.coords.longitude * 1000000) / 1000000;
+        var acc = Math.round(pos.coords.accuracy);
+        registro.lat = lat;
+        registro.lng = lng;
+        registro.acc = acc; // precisión en metros
+        enviarAGAS(registro);
+        if (evals.length > 0) {
+          evals[evals.length-1].lat = lat;
+          evals[evals.length-1].lng = lng;
+        }
+        if (acc > 50) {
+          mostrarToast('GPS con precision de ' + acc + 'm — muevase a zona abierta para mejor señal');
+        }
+      },
+      function() { enviarAGAS(registro); },
+      gpsOpts
+    );
+  } else {
+    enviarAGAS(registro);
+  }
 
   var t = document.getElementById('toast');
   t.classList.add('show'); setTimeout(function() { t.classList.remove('show'); }, 2500);
@@ -2611,6 +2707,298 @@ function resetFirma() {
   limpiarFirma();
 }
 
+// ══ MAPA DE RUTAS ════════════════════════════════════════════════════════════
+var MAPA_PIN  = '2105';
+var mapaMap   = null;
+var mapaAcceso = false;
+
+function verificarPinMapa() {
+  var pin = document.getElementById('mapa-pin-input').value;
+  if (pin === MAPA_PIN) {
+    mapaAcceso = true;
+    document.getElementById('mapa-pin-wrap').style.display    = 'none';
+    document.getElementById('mapa-contenido').style.display   = 'block';
+    document.getElementById('mapa-fecha').value = new Date().toISOString().split('T')[0];
+    setTimeout(iniciarMapa, 300);
+  } else {
+    document.getElementById('mapa-pin-error').style.display = 'block';
+    document.getElementById('mapa-pin-input').value = '';
+    setTimeout(function(){ document.getElementById('mapa-pin-error').style.display='none'; }, 2000);
+  }
+}
+
+function iniciarMapa() {
+  if (mapaMap) return;
+  // Coordenadas aproximadas de Palma Grande (Colombia)
+  mapaMap = L.map('mapa-container').setView([7.5, -73.5], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(mapaMap);
+  cargarMapa();
+}
+
+function cargarMapa() {
+  if (!mapaMap) return;
+  var fecha  = document.getElementById('mapa-fecha').value;
+  var supFilt = document.getElementById('mapa-sup').value;
+  if (!fecha) return;
+
+  // Cargar evaluaciones si no están en memoria
+  var promesa = evals.length === 0 ? cargarDesdeGAS() : Promise.resolve();
+  promesa.then(function() { renderMapa(fecha, supFilt); });
+}
+
+function renderMapa(fecha, supFilt) {
+  // Limpiar capas anteriores
+  mapaMap.eachLayer(function(layer) {
+    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+      mapaMap.removeLayer(layer);
+    }
+  });
+
+  // Filtrar evaluaciones del día con ubicación
+  var evsFecha = evals.filter(function(e) {
+    var supOk = supFilt === 'todos' || e.supervisor === supFilt;
+    return e.fecha === fecha && supOk && e.lat && e.lng;
+  });
+
+  var metrics = document.getElementById('mapa-metrics');
+  var puntos  = document.getElementById('mapa-puntos');
+  var trackPts = getTrackDia(fecha, supFilt);
+
+  if (evsFecha.length === 0 && trackPts.length === 0) {
+    metrics.innerHTML = '<div class="mcard" style="grid-column:span 4;text-align:center;"><div class="empty" style="padding:.5rem;"><i class="ti ti-map-off" style="display:block;font-size:20px;margin-bottom:4px;"></i>Sin datos de ubicación para esta fecha</div></div>';
+    puntos.innerHTML = '';
+    return;
+  }
+
+  // Métricas
+  var supColors = {'Juan Carlos Oviedo':'#3B6D11','Brayan Pérez':'#185FA5'};
+  metrics.innerHTML =
+    '<div class="mcard"><div class="mval">'+evsFecha.length+'</div><div class="mlbl">Evaluaciones</div></div>'
+    +'<div class="mcard"><div class="mval">'+new Set(evsFecha.map(function(e){return e.supervisor;})).size+'</div><div class="mlbl">Supervisores</div></div>'
+    +'<div class="mcard"><div class="mval">'+new Set(evsFecha.map(function(e){return e.lote;})).size+'</div><div class="mlbl">Lotes visitados</div></div>'
+    +'<div class="mcard"><div class="mval" style="color:'+(evsFecha.filter(function(e){return e.pctVerde>3;}).length>0?'var(--r600)':'var(--g600)')+'">'+evsFecha.filter(function(e){return e.cal&&e.cal.nota==='A';}).length+'</div><div class="mlbl">Cal. A</div></div>';
+
+  // Agrupar por supervisor para dibujar rutas
+  var porSup = {};
+  evsFecha.forEach(function(e) {
+    if (!porSup[e.supervisor]) porSup[e.supervisor] = [];
+    porSup[e.supervisor].push(e);
+  });
+
+  var bounds = [];
+
+  Object.keys(porSup).forEach(function(sup) {
+    var color = supColors[sup] || '#639922';
+    var evs   = porSup[sup].sort(function(a,b){ return (a.hora||'').localeCompare(b.hora||''); });
+    var coords = evs.map(function(e){ return [e.lat, e.lng]; });
+    bounds = bounds.concat(coords);
+
+    // Línea de ruta
+    if (coords.length > 1) {
+      L.polyline(coords, { color: color, weight: 3, opacity: 0.7, dashArray: '6,4' }).addTo(mapaMap);
+    }
+
+    // Marcadores
+    evs.forEach(function(e, i) {
+      var nota    = e.cal ? e.cal.nota : '?';
+      var calColor = nota==='A'?'#3B6D11':nota==='B'?'#854F0B':'#A32D2D';
+      var icon = L.divIcon({
+        className: '',
+        html: '<div style="width:32px;height:32px;border-radius:50%;background:'+color+';'
+          +'border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);'
+          +'display:flex;align-items:center;justify-content:center;'
+          +'font-size:11px;font-weight:700;color:#fff;">'+(i+1)+'</div>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+      var marker = L.marker([e.lat, e.lng], { icon: icon }).addTo(mapaMap);
+      marker.bindPopup(
+        '<div style="font-family:Arial;min-width:180px;">'
+        +'<div style="font-weight:700;font-size:13px;margin-bottom:4px;">'+e.cosechero+'</div>'
+        +'<div style="font-size:11px;color:#666;margin-bottom:4px;">'+e.lote+' · '+e.supervisor+'</div>'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+        +'<span style="background:'+(e.pctVerde>3?'#FCEBEB':'#EAF3DE')+';color:'+(e.pctVerde>3?'#A32D2D':'#3B6D11')+';padding:2px 6px;border-radius:10px;font-size:11px;font-weight:600;">'+(e.pctVerde||0).toFixed(1)+'% verde</span>'
+        +'<span style="background:'+(nota==='A'?'#EAF3DE':nota==='B'?'#FAEEDA':'#FCEBEB')+';color:'+calColor+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">'+nota+'</span>'
+        +'</div>'
+        +'<div style="font-size:10px;color:#999;">'+e.fecha+(e.hora?' · '+e.hora:'')+(e.acc?' · ±'+e.acc+'m':'')+'</div>'
+        +'</div>'
+      );
+    });
+  });
+
+  // Dibujar ruta continua del tracker
+  var porSupTrack = {};
+  trackPts.forEach(function(p) {
+    if (!porSupTrack[p.sup]) porSupTrack[p.sup] = [];
+    porSupTrack[p.sup].push([p.lat, p.lng]);
+  });
+  Object.keys(porSupTrack).forEach(function(sup) {
+    var col = supColors[sup] || '#639922';
+    L.polyline(porSupTrack[sup], {color:col, weight:2, opacity:.5}).addTo(mapaMap);
+    trackPts.filter(function(p){return p.sup===sup;}).forEach(function(p) {
+      bounds.push([p.lat, p.lng]);
+    });
+  });
+
+  // Ajustar vista al contenido
+  if (bounds.length > 0) {
+    mapaMap.fitBounds(bounds, { padding: [30, 30] });
+  }
+
+  // Lista de puntos
+  puntos.innerHTML = '<div class="stitle"><i class="ti ti-list-check"></i> Evaluaciones del día</div>'
+    + evsFecha.map(function(e, i) {
+      var nota     = e.cal ? e.cal.nota : '?';
+      var calBg    = nota==='A'?'var(--g50)':nota==='B'?'var(--a50)':'var(--r50)';
+      var calCol   = nota==='A'?'var(--g600)':nota==='B'?'var(--a600)':'var(--r600)';
+      var vCol     = (e.pctVerde||0)>3?'var(--r600)':'var(--g600)';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--bd);">'
+        +'<div style="width:28px;height:28px;border-radius:50%;background:'+(supColors[e.supervisor]||'#639922')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">'+(i+1)+'</div>'
+        +'<div style="flex:1;">'
+        +'<div style="font-size:13px;font-weight:500;">'+e.cosechero+'</div>'
+        +'<div style="font-size:11px;color:var(--tx2);">'+e.lote+' · '+e.supervisor+'</div>'
+        +'</div>'
+        +'<span style="background:'+calBg+';color:'+calCol+';padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;">'+nota+'</span>'
+        +'<span style="font-size:12px;font-weight:600;color:'+vCol+';">'+(e.pctVerde||0).toFixed(1)+'%</span>'
+        +'</div>';
+    }).join('');
+}
+
+// ══ TRACKER GPS ══════════════════════════════════════════════════════════════
+var TRACKER_KEY   = 'palma_gps_track';
+var trackInterval = null;
+var trackActivo   = false;
+
+function iniciarTracker() {
+  if (!navigator.geolocation) return;
+  if (trackActivo) return;
+  trackActivo = true;
+
+  // Registrar punto inmediatamente
+  registrarPuntoGPS();
+
+  // Registrar cada 60 segundos
+  trackInterval = setInterval(registrarPuntoGPS, 60000);
+}
+
+function registrarPuntoGPS() {
+  if (!navigator.geolocation) return;
+  var supIdx = document.getElementById('sel-sup') ? document.getElementById('sel-sup').value : '';
+  if (supIdx === '') return;
+
+  // Primer intento con alta precisión
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      // Si la precisión es mayor a 50m, esperar 3s y reintentar una vez
+      if (pos.coords.accuracy > 50) {
+        setTimeout(function() {
+          navigator.geolocation.getCurrentPosition(
+            function(pos2) { guardarPunto(pos2, supIdx); },
+            function()     { guardarPunto(pos,  supIdx); }, // Si falla, usar el primero
+            { timeout:8000, maximumAge:0, enableHighAccuracy:true }
+          );
+        }, 3000);
+      } else {
+        guardarPunto(pos, supIdx);
+      }
+    },
+    null,
+    { timeout:10000, maximumAge:0, enableHighAccuracy:true }
+  );
+}
+
+function guardarPunto(pos, supIdx) {
+  var punto = {
+    lat:   Math.round(pos.coords.latitude  * 1000000) / 1000000,
+    lng:   Math.round(pos.coords.longitude * 1000000) / 1000000,
+    acc:   Math.round(pos.coords.accuracy),
+    ts:    new Date().toISOString(),
+    hora:  new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}),
+    fecha: new Date().toISOString().split('T')[0],
+    sup:   supIdx !== '' ? SUPS[parseInt(supIdx)] : ''
+  };
+  guardarPuntoTrack(punto);
+}
+
+function guardarPuntoTrack(punto) {
+  try {
+    var track = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]');
+    track.push(punto);
+    // Mantener solo los últimos 7 días
+    var hace7 = new Date(); hace7.setDate(hace7.getDate() - 7);
+    track = track.filter(function(p) { return new Date(p.ts) > hace7; });
+    localStorage.setItem(TRACKER_KEY, JSON.stringify(track));
+  } catch(e) {}
+}
+
+function getTrackDia(fecha, sup) {
+  try {
+    var track = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]');
+    return track.filter(function(p) {
+      var fechaOk = p.fecha === fecha;
+      var supOk   = !sup || sup === 'todos' || p.sup === sup;
+      return fechaOk && supOk;
+    }).sort(function(a,b){ return a.ts.localeCompare(b.ts); });
+  } catch(e) { return []; }
+}
+
+function exportarKML() {
+  var fecha   = document.getElementById('mapa-fecha').value;
+  var supFilt = document.getElementById('mapa-sup').value;
+  var evsFecha = evals.filter(function(e) {
+    var supOk = supFilt === 'todos' || e.supervisor === supFilt;
+    return e.fecha === fecha && supOk && e.lat && e.lng;
+  });
+  var trackPts = getTrackDia(fecha, supFilt);
+  if (!evsFecha.length && !trackPts.length) { alert('No hay datos de ubicación para esta fecha.'); return; }
+
+  var supColors = {'Juan Carlos Oviedo':'jco','Brayan Pérez':'bp'};
+  var lines = [];
+  lines.push('<' + '?xml version="1.0" encoding="UTF-8"?' + '>');
+  lines.push('<kml xmlns="http://www.opengis.net/kml/2.2">');
+  lines.push('<Document>');
+  lines.push('<name>Palma Grande - Ruta ' + fecha + '</name>');
+  lines.push('<description>Supervision de cosecha - ' + (supFilt==='todos'?'Todos':supFilt) + '</description>');
+  lines.push('<Style id="jco"><IconStyle><color>ff118A3B</color><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle><LineStyle><color>ff118A3B</color><width>3</width></LineStyle></Style>');
+  lines.push('<Style id="bp"><IconStyle><color>ffA55F18</color><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/blu-circle.png</href></Icon></IconStyle><LineStyle><color>ffA55F18</color><width>3</width></LineStyle></Style>');
+
+  // Rutas del tracker por supervisor
+  var porSupTrack = {};
+  trackPts.forEach(function(p) { if (!porSupTrack[p.sup]) porSupTrack[p.sup]=[]; porSupTrack[p.sup].push(p); });
+  Object.keys(porSupTrack).forEach(function(sup) {
+    var pts = porSupTrack[sup];
+    var sId = supColors[sup] || 'jco';
+    lines.push('<Placemark><name>Ruta - ' + sup + '</name><styleUrl>#' + sId + '</styleUrl><LineString><tessellate>1</tessellate><coordinates>');
+    pts.forEach(function(p){ lines.push(p.lng + ',' + p.lat + ',0'); });
+    lines.push('</coordinates></LineString></Placemark>');
+  });
+
+  // Marcadores de evaluaciones
+  evsFecha.forEach(function(e, i) {
+    var nota = e.cal ? e.cal.nota : '?';
+    var sId  = supColors[e.supervisor] || 'jco';
+    lines.push('<Placemark>');
+    lines.push('<name>' + (i+1) + '. ' + e.cosechero + '</name>');
+    lines.push('<description><![CDATA[Supervisor: ' + e.supervisor + ' | Lote: ' + e.lote + ' | Cal: ' + nota + ' | Verde: ' + (e.pctVerde||0).toFixed(1) + '% | Hora: ' + (e.hora||'') + ']]></description>');
+    lines.push('<styleUrl>#' + sId + '</styleUrl>');
+    lines.push('<Point><coordinates>' + e.lng + ',' + e.lat + ',0</coordinates></Point>');
+    lines.push('</Placemark>');
+  });
+
+  lines.push('</Document></kml>');
+
+  var kml  = lines.join('\n');
+  var blob = new Blob([kml], {type:'application/vnd.google-earth.kml+xml'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'PalmaGrande_Ruta_' + fecha + '.kml';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
 // ══ NAVEGACIÓN ═══════════════════════════════════════════════════════════════
 function showTab(id, btn) {
   document.querySelectorAll('.sec').forEach(function(s) { s.classList.remove('active'); });
@@ -2648,5 +3036,6 @@ function showTab(id, btn) {
 }</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>
