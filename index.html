@@ -2921,20 +2921,22 @@ function enviarPuntosAlSheet() {
   var track = [];
   try { track = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]'); } catch(e) {}
 
-  // Solo enviar puntos de hoy que no hayan sido enviados
+  // Enviar puntos de los últimos 2 días que no hayan sido enviados (cubre fallos de red del día anterior)
   var hoy = fechaColombiaHoy();
+  var ayer = (function(){ var d = new Date(); d.setDate(d.getDate()-1); return d.toLocaleDateString('es-CO',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).split('/').reverse().join('-'); })();
   var ENVIADOS_KEY = 'palma_track_enviados';
   var enviados = [];
   try { enviados = JSON.parse(localStorage.getItem(ENVIADOS_KEY) || '[]'); } catch(e) {}
 
   var nuevos = track.filter(function(p) {
-    return p.fecha === hoy && !enviados.includes(p.ts);
+    return (p.fecha === hoy || p.fecha === ayer) && !enviados.includes(p.ts);
   });
 
   if (!nuevos.length) return;
 
   fetch(GAS_URL, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'guardarRuta', puntos: nuevos })
   })
   .then(function(r) { return r.json(); })
@@ -2986,7 +2988,7 @@ function registrarPuntoGPS() {
         guardarPunto(pos, supIdx);
       }
     },
-    null,
+    function() { /* GPS no disponible — reintentará en el próximo ciclo de 60s */ },
     { timeout:10000, maximumAge:0, enableHighAccuracy:true }
   );
 }
