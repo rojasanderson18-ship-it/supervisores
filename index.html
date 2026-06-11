@@ -722,10 +722,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="metrics" id="mapa-metrics" style="margin-bottom:.875rem;"></div>
 
       <!-- Mapa -->
-      <div style="border-radius:var(--rrl);overflow:hidden;border:.5px solid var(--bd);margin-bottom:.875rem;">
-        <div id="mapa-container" style="height:400px;background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+      <div style="border-radius:var(--rrl);overflow:hidden;border:.5px solid var(--bd);margin-bottom:.875rem;position:relative;">
+        <div id="mapa-placeholder" style="height:400px;background:var(--bg2);display:flex;align-items:center;justify-content:center;">
           <div class="empty"><i class="ti ti-map" style="font-size:26px;display:block;margin-bottom:8px;"></i>Selecciona una fecha para ver la ruta</div>
         </div>
+        <div id="mapa-container" style="height:400px;display:none;"></div>
       </div>
 
       <!-- Lista de puntos -->
@@ -2731,6 +2732,12 @@ function verificarPinMapa() {
 }
 
 function iniciarMapa() {
+  // Mostrar contenedor real, ocultar placeholder
+  var placeholder = document.getElementById('mapa-placeholder');
+  var container   = document.getElementById('mapa-container');
+  if (placeholder) placeholder.style.display = 'none';
+  if (container)   container.style.display   = 'block';
+
   if (mapaMap) {
     mapaMap.invalidateSize();
     cargarMapa();
