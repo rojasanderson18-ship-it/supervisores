@@ -1358,6 +1358,9 @@ function guardar() {
   evals.push(registro);
 
   // Obtener ubicación GPS al guardar
+  // Enviar puntos de ruta acumulados inmediatamente al guardar
+  enviarPuntosAlSheet();
+
   if (navigator.geolocation) {
     // Intentar obtener ubicación precisa (máx 50m de error)
     var gpsOpts = { timeout:8000, maximumAge:0, enableHighAccuracy:true };
@@ -1941,7 +1944,7 @@ function compartirReporte() {
 var evalsFiltradas = [];
 
 function initHistorial() {
-  var hoy = new Date().toISOString().split('T')[0];
+  var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
   document.getElementById('hist-hasta').value = hoy;
@@ -1956,7 +1959,7 @@ function initHistorial() {
 function limpiarFiltrosHistorial() {
   document.getElementById('hist-sup').value = '';
   document.getElementById('hist-cal').value = '';
-  var hoy = new Date().toISOString().split('T')[0];
+  var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
   document.getElementById('hist-hasta').value = hoy;
@@ -2308,7 +2311,7 @@ function compartirReporte() {
 var evalsFiltradas = [];
 
 function initHistorial() {
-  var hoy = new Date().toISOString().split('T')[0];
+  var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
   document.getElementById('hist-hasta').value = hoy;
@@ -2338,7 +2341,7 @@ function filtrarHistorial() {
 function limpiarFiltrosHistorial() {
   document.getElementById('hist-sup').value = '';
   document.getElementById('hist-cal').value = '';
-  var hoy = new Date().toISOString().split('T')[0];
+  var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
   document.getElementById('hist-hasta').value = hoy;
@@ -2888,6 +2891,13 @@ var trackInterval = null;
 var trackActivo   = false;
 var rutaData      = null;  // Puntos de ruta cargados del Sheet
 
+function fechaColombiaHoy() {
+  return new Date().toLocaleDateString('es-CO', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).split('/').reverse().join('-'); // YYYY-MM-DD
+}
+
 function iniciarTracker() {
   if (!navigator.geolocation) return;
   if (trackActivo) return;
@@ -2912,7 +2922,7 @@ function enviarPuntosAlSheet() {
   try { track = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]'); } catch(e) {}
 
   // Solo enviar puntos de hoy que no hayan sido enviados
-  var hoy = new Date().toISOString().split('T')[0];
+  var hoy = fechaColombiaHoy();
   var ENVIADOS_KEY = 'palma_track_enviados';
   var enviados = [];
   try { enviados = JSON.parse(localStorage.getItem(ENVIADOS_KEY) || '[]'); } catch(e) {}
@@ -2946,10 +2956,11 @@ function registrarPuntoGPS() {
   var supIdx = document.getElementById('sel-sup') ? document.getElementById('sel-sup').value : '';
   if (supIdx === '') return;
 
-  // Parar tracking después de las 1:45 PM
+  // Parar tracking después de las 1:45 PM (hora Colombia)
   var ahora = new Date();
-  var horas = ahora.getHours();
-  var mins  = ahora.getMinutes();
+  var horaCol = new Date(ahora.toLocaleString('en-US', {timeZone: 'America/Bogota'}));
+  var horas = horaCol.getHours();
+  var mins  = horaCol.getMinutes();
   if (horas > 13 || (horas === 13 && mins >= 45)) {
     if (trackActivo) {
       clearInterval(trackInterval);
@@ -2987,7 +2998,7 @@ function guardarPunto(pos, supIdx) {
     acc:   Math.round(pos.coords.accuracy),
     ts:    new Date().toISOString(),
     hora:  new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}),
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: fechaColombiaHoy(),
     sup:   supIdx !== '' ? SUPS[parseInt(supIdx)] : ''
   };
   guardarPuntoTrack(punto);
