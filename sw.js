@@ -3,7 +3,7 @@
 // Permite usar la app sin conexión a internet
 // ============================================================
 
-const CACHE_NAME = 'cosecha-v3';
+const CACHE_NAME = 'cosecha-v4';
 const ASSETS = [
   './',
   './index.html',

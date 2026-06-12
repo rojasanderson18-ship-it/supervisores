@@ -3045,16 +3045,12 @@ var ultimoPunto    = 0;      // timestamp del último punto guardado (ms)
 var rutaData       = null;   // Puntos de ruta cargados del Sheet
 
 function fechaColombiaHoy() {
-  var d = new Date();
-  return d.getFullYear() + '-'
-    + String(d.getMonth() + 1).padStart(2, '0') + '-'
-    + String(d.getDate()).padStart(2, '0');
+  // toLocaleDateString('sv') da YYYY-MM-DD usando la fecha local del dispositivo
+  return new Date().toLocaleDateString('sv');
 }
 
 function fechaStr(d) {
-  return d.getFullYear() + '-'
-    + String(d.getMonth() + 1).padStart(2, '0') + '-'
-    + String(d.getDate()).padStart(2, '0');
+  return d.toLocaleDateString('sv');
 }
 
 function horaColombiaActual() {
