@@ -849,7 +849,7 @@ var pts   = {};
 
 // ══ INIT ═════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function() {
-  var hoyInit = new Date().toISOString().split('T')[0];
+  var hoyInit = fechaColombiaHoy();
   document.getElementById('inp-fecha').value = hoyInit;
   if (document.getElementById('dash-fecha')) document.getElementById('dash-fecha').value = hoyInit;
   renderCriterios();
@@ -1451,7 +1451,7 @@ function guardar() {
 
 // ══ PROGRESO DIARIO ══════════════════════════════════════════════════════════
 function renderProgSup() {
-  var hoy  = document.getElementById('inp-fecha').value || new Date().toISOString().split('T')[0];
+  var hoy  = document.getElementById('inp-fecha').value || fechaColombiaHoy();
   var html = '';
   SUPS.forEach(function(sup) {
     var cnt  = evals.filter(function(e) { return e.supervisor === sup && e.fecha === hoy; }).length;
@@ -1471,7 +1471,7 @@ function sl(v) { return v >= 4 ? 'Óptimo' : v >= 3 ? 'Aceptable' : 'Crítico'; 
 
 function upd() {
   var dashFecha = document.getElementById('dash-fecha');
-  var hoy = dashFecha && dashFecha.value ? dashFecha.value : new Date().toISOString().split('T')[0];
+  var hoy = dashFecha && dashFecha.value ? dashFecha.value : fechaColombiaHoy();
   var evHoy  = evals.filter(function(e) { return e.fecha === hoy; });
   var totRacG = evals.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
   var totVerde = evals.reduce(function(a,e) { return a + e.racimos.verde; }, 0);
@@ -1937,7 +1937,7 @@ function rpOnPeriodoChange() {
   if (!periodo) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   lbl.textContent = periodo === 'dia' ? 'Fecha' : 'Cualquier fecha de la semana';
-  document.getElementById('rp-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rp-fecha').value = fechaColombiaHoy();
 }
 
 function semanaDeEval(fechaStr) {
@@ -1954,7 +1954,7 @@ function inicioFinSemana(fechaStr) {
   var d = new Date(fechaStr);
   var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-  var fmt = function(x) { return x.toISOString().split('T')[0]; };
+  var fmt = function(x) { return fechaStr(x); };
   return { inicio: fmt(lunes), fin: fmt(domingo) };
 }
 
@@ -1984,7 +1984,7 @@ var evalsFiltradas = [];
 function initHistorial() {
   var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
   if (evals.length === 0) {
     cargarDesdeGAS().then(function() { filtrarHistorial(); });
@@ -1999,7 +1999,7 @@ function limpiarFiltrosHistorial() {
   document.getElementById('hist-cal').value = '';
   var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
   filtrarHistorial();
 }
@@ -2057,7 +2057,7 @@ function rpOnPeriodoChange() {
   if (!periodo) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   lbl.textContent = periodo === 'dia' ? 'Fecha' : 'Cualquier fecha de la semana';
-  document.getElementById('rp-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rp-fecha').value = fechaColombiaHoy();
 }
 
 function semanaDeEval(fechaStr) {
@@ -2074,7 +2074,7 @@ function inicioFinSemana(fechaStr) {
   var d = new Date(fechaStr);
   var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-  var fmt = function(x) { return x.toISOString().split('T')[0]; };
+  var fmt = function(x) { return fechaStr(x); };
   return { inicio: fmt(lunes), fin: fmt(domingo) };
 }
 
@@ -2351,7 +2351,7 @@ var evalsFiltradas = [];
 function initHistorial() {
   var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
   if (evals.length === 0) {
     cargarDesdeGAS().then(function() { filtrarHistorial(); });
@@ -2381,7 +2381,7 @@ function limpiarFiltrosHistorial() {
   document.getElementById('hist-cal').value = '';
   var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
   filtrarHistorial();
 }
@@ -3046,6 +3046,13 @@ var rutaData       = null;   // Puntos de ruta cargados del Sheet
 
 function fechaColombiaHoy() {
   return new Date().toLocaleDateString('es-CO', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).split('/').reverse().join('-');
+}
+
+function fechaStr(d) {
+  return d.toLocaleDateString('es-CO', {
     timeZone: 'America/Bogota',
     year: 'numeric', month: '2-digit', day: '2-digit'
   }).split('/').reverse().join('-');
