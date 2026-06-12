@@ -2797,8 +2797,11 @@ function iniciarMapa() {
     }).addTo(mapaMap);
     setTimeout(function() { mapaMap.invalidateSize(); }, 300);
     cargarMapa();
-    // Mostrar ubicación actual automáticamente al abrir el mapa
-    setTimeout(mostrarUbicacionActual, 500);
+    // Mostrar ubicación actual solo si la fecha seleccionada es hoy
+    setTimeout(function() {
+      var fecha = document.getElementById('mapa-fecha').value;
+      if (fecha === fechaColombiaHoy()) mostrarUbicacionActual();
+    }, 500);
   }
 
   requestAnimationFrame(function() { setTimeout(intentarInit, 50); });
@@ -2882,13 +2885,22 @@ function cargarMapa() {
 }
 
 function renderMapa(fecha, supFilt) {
-  // Limpiar capas anteriores (excepto tile layer y ubicación actual)
+  var esHoy = fecha === fechaColombiaHoy();
+
+  // Limpiar capas anteriores
+  // Si es fecha histórica, también quitar la ubicación actual
   mapaMap.eachLayer(function(layer) {
-    if (layer === miUbicacionMarker || layer === miUbicacionCircle) return;
+    if (esHoy && (layer === miUbicacionMarker || layer === miUbicacionCircle)) return;
     if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.Circle) {
       mapaMap.removeLayer(layer);
     }
   });
+
+  // Si es fecha histórica, limpiar las referencias del marcador de ubicación
+  if (!esHoy) {
+    miUbicacionMarker = null;
+    miUbicacionCircle = null;
+  }
 
   // Filtrar evaluaciones del día con ubicación
   var evsFecha = evals.filter(function(e) {
