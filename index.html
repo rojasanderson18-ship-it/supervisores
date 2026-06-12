@@ -2882,9 +2882,10 @@ function cargarMapa() {
 }
 
 function renderMapa(fecha, supFilt) {
-  // Limpiar capas anteriores
+  // Limpiar capas anteriores (excepto tile layer y ubicación actual)
   mapaMap.eachLayer(function(layer) {
-    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+    if (layer === miUbicacionMarker || layer === miUbicacionCircle) return;
+    if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.Circle) {
       mapaMap.removeLayer(layer);
     }
   });
@@ -2897,12 +2898,22 @@ function renderMapa(fecha, supFilt) {
 
   var metrics = document.getElementById('mapa-metrics');
   var puntos  = document.getElementById('mapa-puntos');
-  // Ruta viene del Sheet (ya cargada en rutaData)
-  var trackPts = (rutaData || []).filter(function(p) {
-    var fechaOk = p.fecha === fecha;
-    var supOk   = supFilt === 'todos' || p.sup === supFilt;
-    return fechaOk && supOk;
-  }).sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
+
+  // Combinar puntos del Sheet + pendientes en localStorage (por si aún no se enviaron)
+  var ptsSheet = (rutaData || []).filter(function(p) {
+    return p.fecha === fecha && (supFilt === 'todos' || p.sup === supFilt);
+  });
+  var ptsLocal = [];
+  try {
+    var tsEnSheetSet = new Set(ptsSheet.map(function(p){ return p.ts; }));
+    ptsLocal = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]').filter(function(p) {
+      return p.fecha === fecha
+        && (supFilt === 'todos' || p.sup === supFilt)
+        && !tsEnSheetSet.has(p.ts);
+    });
+  } catch(e) {}
+  var trackPts = ptsSheet.concat(ptsLocal)
+    .sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
 
   if (evsFecha.length === 0 && trackPts.length === 0) {
     metrics.innerHTML = '<div class="mcard" style="grid-column:span 4;text-align:center;"><div class="empty" style="padding:.5rem;"><i class="ti ti-map-off" style="display:block;font-size:20px;margin-bottom:4px;"></i>Sin datos de ubicación para esta fecha</div></div>';
