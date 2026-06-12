@@ -2786,8 +2786,8 @@ function iniciarMapa() {
     // Forzar reflow antes de que Leaflet lea las dimensiones
     var el = document.getElementById('mapa-container');
     void el.offsetWidth;
-    // Palma Grande — Colombia
-    mapaMap = L.map('mapa-container', { zoomControl: true }).setView([7.5, -73.5], 13);
+    // Palma Grande — Puerto Concordia, Meta
+    mapaMap = L.map('mapa-container', { zoomControl: true }).setView([2.62, -72.77], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
