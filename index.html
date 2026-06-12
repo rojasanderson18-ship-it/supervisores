@@ -875,6 +875,25 @@ window.addEventListener('DOMContentLoaded', function() {
     var bar = document.getElementById('offline-bar');
     if (bar) bar.style.display = 'flex';
   }
+
+  // Restaurar supervisor seleccionado de la sesión anterior
+  var savedSup = localStorage.getItem('palma_sup_idx');
+  if (savedSup) {
+    var selSup = document.getElementById('sel-sup');
+    if (selSup) {
+      selSup.value = savedSup;
+      onSupChange(); // Carga cosecheros e inicia tracker
+    }
+  }
+
+  // Reanudar tracker cuando el usuario vuelve a la app (desde background o al desbloquear)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState !== 'visible') return;
+    var supEl = document.getElementById('sel-sup');
+    if (!supEl || supEl.value === '') return;
+    // Reiniciar tracker (iniciarTracker verifica hora internamente)
+    iniciarTracker();
+  });
 });
 
 // ══ CICLO ════════════════════════════════════════════════════════════════════
@@ -1009,6 +1028,13 @@ function onSupChange() {
   var label   = document.getElementById('cosech-label');
   var options = document.getElementById('cosech-options');
   var trigger = document.getElementById('cosech-trigger');
+
+  // Persistir selección para restaurar al reabrir la app
+  if (idx !== '') {
+    localStorage.setItem('palma_sup_idx', idx);
+  } else {
+    localStorage.removeItem('palma_sup_idx');
+  }
 
   if (idx === '') {
     label.textContent = '— elige supervisor primero —';
@@ -2898,10 +2924,11 @@ function renderMapa(fecha, supFilt) {
 }
 
 // ══ TRACKER GPS ══════════════════════════════════════════════════════════════
-var TRACKER_KEY   = 'palma_gps_track';
-var trackInterval = null;
-var trackActivo   = false;
-var rutaData      = null;  // Puntos de ruta cargados del Sheet
+var TRACKER_KEY    = 'palma_gps_track';
+var trackInterval  = null;
+var enviarInterval = null;
+var trackActivo    = false;
+var rutaData       = null;  // Puntos de ruta cargados del Sheet
 
 function fechaColombiaHoy() {
   return new Date().toLocaleDateString('es-CO', {
@@ -2912,17 +2939,23 @@ function fechaColombiaHoy() {
 
 function iniciarTracker() {
   if (!navigator.geolocation) return;
-  if (trackActivo) return;
-  trackActivo = true;
 
-  // Registrar punto inmediatamente
+  // Verificar hora antes de arrancar
+  var ahora   = new Date();
+  var horaCol = new Date(ahora.toLocaleString('en-US', {timeZone: 'America/Bogota'}));
+  if (horaCol.getHours() > 13 || (horaCol.getHours() === 13 && horaCol.getMinutes() >= 45)) return;
+
+  // Limpiar intervals previos (por si se llama al volver de background)
+  if (trackInterval)  clearInterval(trackInterval);
+  if (enviarInterval) clearInterval(enviarInterval);
+  trackActivo = false;
+
+  trackActivo    = true;
+  trackInterval  = setInterval(registrarPuntoGPS,    60000);
+  enviarInterval = setInterval(enviarPuntosAlSheet, 5 * 60 * 1000);
+
+  // Registrar punto inmediatamente al arrancar
   registrarPuntoGPS();
-
-  // Registrar GPS cada 60 segundos
-  trackInterval = setInterval(registrarPuntoGPS, 60000);
-
-  // Enviar puntos acumulados al Sheet cada 5 minutos
-  setInterval(enviarPuntosAlSheet, 5 * 60 * 1000);
 }
 
 function enviarPuntosAlSheet() {
@@ -2978,6 +3011,7 @@ function registrarPuntoGPS() {
   if (horas > 13 || (horas === 13 && mins >= 45)) {
     if (trackActivo) {
       clearInterval(trackInterval);
+      clearInterval(enviarInterval);
       trackActivo = false;
       enviarPuntosAlSheet(); // Enviar último lote antes de parar
     }
@@ -3107,6 +3141,11 @@ function showTab(id, btn) {
   btn.classList.add('active');
 
   if (id === 'personal') { renderPersonal(); return; }
+
+  if (id === 'mapa') {
+    if (mapaAcceso) setTimeout(function() { iniciarMapa(); }, 150);
+    return;
+  }
 
   if (id === 'reportes' || id === 'historial' || id === 'dashboard' || id === 'comparativa') {
     if (evals.length === 0) {
