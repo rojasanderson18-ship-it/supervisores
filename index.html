@@ -2981,13 +2981,34 @@ function renderMapa(fecha, supFilt) {
   var porSupTrack = {};
   trackPts.forEach(function(p) {
     if (!porSupTrack[p.sup]) porSupTrack[p.sup] = [];
-    porSupTrack[p.sup].push([p.lat, p.lng]);
+    porSupTrack[p.sup].push(p);
   });
   Object.keys(porSupTrack).forEach(function(sup) {
-    var col = supColors[sup] || '#639922';
-    L.polyline(porSupTrack[sup], {color:col, weight:2, opacity:.5}).addTo(mapaMap);
-    trackPts.filter(function(p){return p.sup===sup;}).forEach(function(p) {
+    var col  = supColors[sup] || '#639922';
+    var pts  = porSupTrack[sup];
+    var coords = pts.map(function(p){ return [p.lat, p.lng]; });
+
+    // Línea del recorrido
+    if (coords.length > 1) {
+      L.polyline(coords, { color: col, weight: 3, opacity: 0.7 }).addTo(mapaMap);
+    }
+
+    // Punto visible por cada registro GPS
+    pts.forEach(function(p) {
       bounds.push([p.lat, p.lng]);
+      L.circleMarker([p.lat, p.lng], {
+        radius: 6,
+        color: '#fff',
+        weight: 2,
+        fillColor: col,
+        fillOpacity: 1
+      }).addTo(mapaMap)
+        .bindPopup(
+          '<div style="font-size:12px;">'
+          + '<b style="color:' + col + ';">' + (p.sup || 'Supervisor') + '</b><br>'
+          + '<span style="color:#666;">' + (p.hora || '') + ' · ±' + (p.acc || '?') + 'm</span>'
+          + '</div>'
+        );
     });
   });
 
