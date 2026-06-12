@@ -3045,22 +3045,21 @@ var ultimoPunto    = 0;      // timestamp del último punto guardado (ms)
 var rutaData       = null;   // Puntos de ruta cargados del Sheet
 
 function fechaColombiaHoy() {
-  return new Date().toLocaleDateString('es-CO', {
-    timeZone: 'America/Bogota',
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).split('/').reverse().join('-');
+  var d = new Date();
+  return d.getFullYear() + '-'
+    + String(d.getMonth() + 1).padStart(2, '0') + '-'
+    + String(d.getDate()).padStart(2, '0');
 }
 
 function fechaStr(d) {
-  return d.toLocaleDateString('es-CO', {
-    timeZone: 'America/Bogota',
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).split('/').reverse().join('-');
+  return d.getFullYear() + '-'
+    + String(d.getMonth() + 1).padStart(2, '0') + '-'
+    + String(d.getDate()).padStart(2, '0');
 }
 
 function horaColombiaActual() {
-  var c = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Bogota'}));
-  return { h: c.getHours(), m: c.getMinutes() };
+  var d = new Date();
+  return { h: d.getHours(), m: d.getMinutes() };
 }
 
 function esDespuesDe145() {
