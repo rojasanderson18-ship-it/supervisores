@@ -717,6 +717,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <button onclick="cargarMapa()" style="flex:1;padding:8px;background:var(--g50);border:.5px solid var(--g400);border-radius:var(--rr);font-size:12px;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
             <i class="ti ti-refresh"></i> Actualizar
           </button>
+          <button onclick="centrarEnMiUbicacion()" style="flex:1;padding:8px;background:var(--b50);border:.5px solid var(--b600);border-radius:var(--rr);font-size:12px;color:var(--b600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+            <i class="ti ti-current-location"></i> Mi ubicación
+          </button>
           <button onclick="exportarKML()" style="flex:1;padding:8px;background:#1a6d3e;color:#fff;border:none;border-radius:var(--rr);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
             <i class="ti ti-brand-google-maps"></i> Exportar KML
           </button>
@@ -2794,9 +2797,66 @@ function iniciarMapa() {
     }).addTo(mapaMap);
     setTimeout(function() { mapaMap.invalidateSize(); }, 300);
     cargarMapa();
+    // Mostrar ubicación actual automáticamente al abrir el mapa
+    setTimeout(mostrarUbicacionActual, 500);
   }
 
   requestAnimationFrame(function() { setTimeout(intentarInit, 50); });
+}
+
+var miUbicacionMarker = null;
+var miUbicacionCircle = null;
+
+function mostrarUbicacionActual() {
+  if (!mapaMap || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var acc = pos.coords.accuracy;
+      actualizarMiUbicacion(lat, lng, acc);
+    },
+    function() {},
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+  );
+}
+
+function actualizarMiUbicacion(lat, lng, acc) {
+  if (!mapaMap) return;
+  // Quitar marcador anterior
+  if (miUbicacionMarker) { mapaMap.removeLayer(miUbicacionMarker); miUbicacionMarker = null; }
+  if (miUbicacionCircle) { mapaMap.removeLayer(miUbicacionCircle); miUbicacionCircle = null; }
+
+  // Círculo de precisión
+  miUbicacionCircle = L.circle([lat, lng], {
+    radius: acc,
+    color: '#185FA5', fillColor: '#185FA5', fillOpacity: 0.08, weight: 1
+  }).addTo(mapaMap);
+
+  // Punto pulsante "yo estoy aquí"
+  var iconYo = L.divIcon({
+    className: '',
+    html: '<div style="width:16px;height:16px;border-radius:50%;background:#185FA5;border:3px solid #fff;box-shadow:0 0 0 3px rgba(24,95,165,0.35);"></div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+  miUbicacionMarker = L.marker([lat, lng], { icon: iconYo, zIndexOffset: 1000 })
+    .addTo(mapaMap)
+    .bindPopup('<div style="font-size:12px;font-weight:600;color:#185FA5;">📍 Tú estás aquí<br><span style="font-weight:400;color:#666;">Precisión: ±' + Math.round(acc) + 'm</span></div>');
+}
+
+function centrarEnMiUbicacion() {
+  if (!mapaMap || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      actualizarMiUbicacion(lat, lng, pos.coords.accuracy);
+      mapaMap.setView([lat, lng], 16);
+    },
+    function() { alert('No se pudo obtener la ubicación. Verifica que el GPS esté activado.'); },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
 }
 
 function cargarMapa() {
