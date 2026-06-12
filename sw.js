@@ -3,11 +3,13 @@
 // Permite usar la app sin conexión a internet
 // ============================================================
 
-const CACHE_NAME = 'cosecha-v1';
+const CACHE_NAME = 'cosecha-v3';
 const ASSETS = [
   './',
   './index.html',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
 ];
 
 // Instalar: cachear recursos esenciales

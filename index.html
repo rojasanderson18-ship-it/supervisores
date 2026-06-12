@@ -2748,7 +2748,7 @@ function verificarPinMapa() {
     mapaAcceso = true;
     document.getElementById('mapa-pin-wrap').style.display    = 'none';
     document.getElementById('mapa-contenido').style.display   = 'block';
-    document.getElementById('mapa-fecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('mapa-fecha').value = fechaColombiaHoy();
     setTimeout(iniciarMapa, 300);
   } else {
     document.getElementById('mapa-pin-error').style.display = 'block';
@@ -2758,24 +2758,37 @@ function verificarPinMapa() {
 }
 
 function iniciarMapa() {
-  // Mostrar contenedor real, ocultar placeholder
   var placeholder = document.getElementById('mapa-placeholder');
   var container   = document.getElementById('mapa-container');
   if (placeholder) placeholder.style.display = 'none';
   if (container)   container.style.display   = 'block';
 
   if (mapaMap) {
-    mapaMap.invalidateSize();
-    cargarMapa();
+    // Forzar recálculo de tamaño después de que el navegador haga layout
+    setTimeout(function() { mapaMap.invalidateSize(); cargarMapa(); }, 200);
     return;
   }
-  // Coordenadas aproximadas de Palma Grande (Colombia)
-  mapaMap = L.map('mapa-container').setView([7.5, -73.5], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19
-  }).addTo(mapaMap);
-  cargarMapa();
+
+  // Esperar a que el navegador calcule el layout del contenedor y a que Leaflet esté disponible
+  function intentarInit() {
+    if (typeof L === 'undefined') {
+      setTimeout(intentarInit, 200); // Leaflet aún no cargó desde la red
+      return;
+    }
+    // Forzar reflow antes de que Leaflet lea las dimensiones
+    var el = document.getElementById('mapa-container');
+    void el.offsetWidth;
+    // Palma Grande — Colombia
+    mapaMap = L.map('mapa-container', { zoomControl: true }).setView([7.5, -73.5], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(mapaMap);
+    setTimeout(function() { mapaMap.invalidateSize(); }, 300);
+    cargarMapa();
+  }
+
+  requestAnimationFrame(function() { setTimeout(intentarInit, 50); });
 }
 
 function cargarMapa() {
