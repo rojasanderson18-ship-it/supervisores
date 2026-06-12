@@ -207,6 +207,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .firma-btns{display:flex;gap:8px;margin-top:8px;}
 .sync-banner{display:none;position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--b600);color:#fff;padding:8px 16px;border-radius:var(--rr);font-size:12px;font-weight:500;z-index:1000;align-items:center;gap:6px;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
 /* Reporte */
 .reporte-wrap{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);overflow:hidden;margin-bottom:.875rem;}
 .reporte-header{background:linear-gradient(135deg,#1e4a0e,#3B6D11);padding:1.25rem;color:#fff;}
@@ -282,6 +283,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div>
       <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:.06em;line-height:1.2;">PALMAGRANDE <span style="color:#C8963E;">S.A.S</span></div>
       <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">Supervisión de calidad — cosecha</div>
+    </div>
+    <div id="gps-indicator" style="display:none;margin-left:auto;align-items:center;gap:5px;background:rgba(255,255,255,0.15);padding:4px 10px;border-radius:20px;">
+      <span style="width:7px;height:7px;border-radius:50%;background:#7fffb0;display:inline-block;animation:pulse 1.5s ease-in-out infinite;"></span>
+      <span style="font-size:11px;color:#fff;font-weight:600;">GPS activo</span>
     </div>
   </div>
 
@@ -2941,37 +2946,92 @@ function renderMapa(fecha, supFilt) {
 
 // ══ TRACKER GPS ══════════════════════════════════════════════════════════════
 var TRACKER_KEY    = 'palma_gps_track';
-var trackInterval  = null;
 var enviarInterval = null;
+var watchId        = null;   // ID del watchPosition activo
 var trackActivo    = false;
-var rutaData       = null;  // Puntos de ruta cargados del Sheet
+var ultimoPunto    = 0;      // timestamp del último punto guardado (ms)
+var rutaData       = null;   // Puntos de ruta cargados del Sheet
 
 function fechaColombiaHoy() {
   return new Date().toLocaleDateString('es-CO', {
     timeZone: 'America/Bogota',
     year: 'numeric', month: '2-digit', day: '2-digit'
-  }).split('/').reverse().join('-'); // YYYY-MM-DD
+  }).split('/').reverse().join('-');
+}
+
+function horaColombiaActual() {
+  var c = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Bogota'}));
+  return { h: c.getHours(), m: c.getMinutes() };
+}
+
+function esDespuesDe145() {
+  var t = horaColombiaActual();
+  return t.h > 13 || (t.h === 13 && t.m >= 45);
 }
 
 function iniciarTracker() {
   if (!navigator.geolocation) return;
+  if (esDespuesDe145()) return;
 
-  // Verificar hora antes de arrancar
-  var ahora   = new Date();
-  var horaCol = new Date(ahora.toLocaleString('en-US', {timeZone: 'America/Bogota'}));
-  if (horaCol.getHours() > 13 || (horaCol.getHours() === 13 && horaCol.getMinutes() >= 45)) return;
+  // Detener watch anterior antes de crear uno nuevo
+  detenerTracker(false);
 
-  // Limpiar intervals previos (por si se llama al volver de background)
-  if (trackInterval)  clearInterval(trackInterval);
+  trackActivo = true;
+  actualizarIndicadorGPS(true);
+
+  // watchPosition: el SO maneja la suscripción — sobrevive mejor al background
+  watchId = navigator.geolocation.watchPosition(
+    function(pos) {
+      var supIdx = document.getElementById('sel-sup') ? document.getElementById('sel-sup').value : '';
+      if (!supIdx) return;
+
+      // Corte a la 1:45 PM
+      if (esDespuesDe145()) { detenerTracker(true); return; }
+
+      // Guardar máximo 1 punto por minuto (watchPosition puede disparar con más frecuencia)
+      var ahora = Date.now();
+      if (ahora - ultimoPunto < 55000) return;
+      ultimoPunto = ahora;
+
+      guardarPunto(pos, supIdx);
+    },
+    function() { /* error de GPS — watchPosition reintenta solo */ },
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
+  );
+
+  // Enviar puntos al Sheet cada 5 minutos
   if (enviarInterval) clearInterval(enviarInterval);
-  trackActivo = false;
-
-  trackActivo    = true;
-  trackInterval  = setInterval(registrarPuntoGPS,    60000);
   enviarInterval = setInterval(enviarPuntosAlSheet, 5 * 60 * 1000);
 
-  // Registrar punto inmediatamente al arrancar
-  registrarPuntoGPS();
+  // Punto inmediato al arrancar
+  var supIdx = document.getElementById('sel-sup') ? document.getElementById('sel-sup').value : '';
+  if (supIdx) {
+    navigator.geolocation.getCurrentPosition(
+      function(pos) { ultimoPunto = Date.now(); guardarPunto(pos, supIdx); },
+      function()    { },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+}
+
+function detenerTracker(enviarUltimos) {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if (enviarInterval)   { clearInterval(enviarInterval); enviarInterval = null; }
+  trackActivo = false;
+  actualizarIndicadorGPS(false);
+  if (enviarUltimos) enviarPuntosAlSheet();
+}
+
+function actualizarIndicadorGPS(activo) {
+  var el = document.getElementById('gps-indicator');
+  if (!el) return;
+  if (activo) {
+    el.style.display = 'flex';
+    el.innerHTML = '<i class="ti ti-map-pin" style="color:var(--g600);font-size:14px;"></i>'
+      + '<span style="font-size:11px;color:var(--g600);font-weight:600;">GPS activo</span>';
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 function enviarPuntosAlSheet() {
@@ -2982,9 +3042,11 @@ function enviarPuntosAlSheet() {
   var track = [];
   try { track = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]'); } catch(e) {}
 
-  // Enviar puntos de los últimos 2 días que no hayan sido enviados (cubre fallos de red del día anterior)
-  var hoy = fechaColombiaHoy();
-  var ayer = (function(){ var d = new Date(); d.setDate(d.getDate()-1); return d.toLocaleDateString('es-CO',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).split('/').reverse().join('-'); })();
+  var hoy  = fechaColombiaHoy();
+  var ayer = (function(){
+    var d = new Date(); d.setDate(d.getDate()-1);
+    return d.toLocaleDateString('es-CO',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).split('/').reverse().join('-');
+  })();
   var ENVIADOS_KEY = 'palma_track_enviados';
   var enviados = [];
   try { enviados = JSON.parse(localStorage.getItem(ENVIADOS_KEY) || '[]'); } catch(e) {}
@@ -2992,7 +3054,6 @@ function enviarPuntosAlSheet() {
   var nuevos = track.filter(function(p) {
     return (p.fecha === hoy || p.fecha === ayer) && !enviados.includes(p.ts);
   });
-
   if (!nuevos.length) return;
 
   fetch(GAS_URL, {
@@ -3003,56 +3064,13 @@ function enviarPuntosAlSheet() {
   .then(function(r) { return r.json(); })
   .then(function(d) {
     if (d.ok) {
-      // Marcar como enviados
       var tsEnviados = nuevos.map(function(p) { return p.ts; });
       var yaEnviados = enviados.concat(tsEnviados);
-      // Mantener solo los últimos 500
       if (yaEnviados.length > 500) yaEnviados = yaEnviados.slice(-500);
       try { localStorage.setItem(ENVIADOS_KEY, JSON.stringify(yaEnviados)); } catch(e) {}
     }
   })
-  .catch(function() {}); // Silencioso — reintentará en 5 min
-}
-
-function registrarPuntoGPS() {
-  if (!navigator.geolocation) return;
-  var supIdx = document.getElementById('sel-sup') ? document.getElementById('sel-sup').value : '';
-  if (supIdx === '') return;
-
-  // Parar tracking después de las 1:45 PM (hora Colombia)
-  var ahora = new Date();
-  var horaCol = new Date(ahora.toLocaleString('en-US', {timeZone: 'America/Bogota'}));
-  var horas = horaCol.getHours();
-  var mins  = horaCol.getMinutes();
-  if (horas > 13 || (horas === 13 && mins >= 45)) {
-    if (trackActivo) {
-      clearInterval(trackInterval);
-      clearInterval(enviarInterval);
-      trackActivo = false;
-      enviarPuntosAlSheet(); // Enviar último lote antes de parar
-    }
-    return;
-  }
-
-  // Primer intento con alta precisión
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      // Si la precisión es mayor a 50m, esperar 3s y reintentar una vez
-      if (pos.coords.accuracy > 50) {
-        setTimeout(function() {
-          navigator.geolocation.getCurrentPosition(
-            function(pos2) { guardarPunto(pos2, supIdx); },
-            function()     { guardarPunto(pos,  supIdx); }, // Si falla, usar el primero
-            { timeout:8000, maximumAge:0, enableHighAccuracy:true }
-          );
-        }, 3000);
-      } else {
-        guardarPunto(pos, supIdx);
-      }
-    },
-    function() { /* GPS no disponible — reintentará en el próximo ciclo de 60s */ },
-    { timeout:10000, maximumAge:0, enableHighAccuracy:true }
-  );
+  .catch(function() {});
 }
 
 function guardarPunto(pos, supIdx) {
