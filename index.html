@@ -876,23 +876,26 @@ window.addEventListener('DOMContentLoaded', function() {
     if (bar) bar.style.display = 'flex';
   }
 
-  // Restaurar supervisor seleccionado de la sesión anterior
+  // Restaurar supervisor y arrancar GPS de inmediato al abrir la app
   var savedSup = localStorage.getItem('palma_sup_idx');
   if (savedSup) {
     var selSup = document.getElementById('sel-sup');
     if (selSup) {
       selSup.value = savedSup;
-      onSupChange(); // Carga cosecheros e inicia tracker
+      onSupChange();    // Carga cosecheros (puede ser async, no bloquea)
+      iniciarTracker(); // GPS arranca de inmediato sin esperar datos del servidor
     }
+  } else if (navigator.geolocation) {
+    // Primera vez: solicitar permiso GPS ahora para que el navegador lo recuerde
+    navigator.geolocation.getCurrentPosition(function(){}, function(){}, { timeout: 5000 });
   }
 
-  // Reanudar tracker cuando el usuario vuelve a la app (desde background o al desbloquear)
+  // Reanudar tracker cuando el usuario vuelve a la app (desde background o al desbloquear pantalla)
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState !== 'visible') return;
     var supEl = document.getElementById('sel-sup');
     if (!supEl || supEl.value === '') return;
-    // Reiniciar tracker (iniciarTracker verifica hora internamente)
-    iniciarTracker();
+    iniciarTracker(); // iniciarTracker ya verifica la hora internamente
   });
 });
 
