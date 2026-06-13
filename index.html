@@ -1988,64 +1988,6 @@ function compartirReporte() {
   }
 }
 
-// ══ HISTORIAL FILTRADO ═══════════════════════════════════════════════════════
-var evalsFiltradas = [];
-
-function initHistorial() {
-  var hoy = fechaColombiaHoy();
-  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = fechaStr(hace30);
-  document.getElementById('hist-hasta').value = hoy;
-  if (evals.length === 0) {
-    cargarDesdeGAS().then(function() { filtrarHistorial(); });
-  } else {
-    filtrarHistorial();
-  }
-}
-
-
-function limpiarFiltrosHistorial() {
-  document.getElementById('hist-sup').value = '';
-  document.getElementById('hist-cal').value = '';
-  var hoy = fechaColombiaHoy();
-  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = fechaStr(hace30);
-  document.getElementById('hist-hasta').value = hoy;
-  filtrarHistorial();
-}
-
-function renderHistorialFiltrado() {
-  var hb = document.getElementById('hbody');
-  var count = document.getElementById('hist-count');
-  count.textContent = evalsFiltradas.length + ' evaluación' + (evalsFiltradas.length !== 1 ? 'es' : '');
-
-  if (!evalsFiltradas.length) {
-    hb.innerHTML = '<div class="empty">Sin evaluaciones para los filtros seleccionados</div>';
-    return;
-  }
-
-  var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
-  hb.innerHTML = evalsFiltradas.slice().reverse().map(function(e) {
-    var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
-      .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
-    var cicloTag = e.fueraCiclo
-      ? '<span class="tag tag-bad"> +' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
-      : '<span class="tag tag-ok">' + e.diasCiclo + 'd </span>';
-    var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
-    return '<div class="hrow">'
-      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
-      + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
-      + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma||'') + '<br>' + cicloTag + '</span>'
-      + '<span><div class="mini-pills">' + pills + '</div></span>'
-      + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
-      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
-      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
-      + '</div>';
-  }).join('');
-}
-
-
-
 function rpOnSupChange() {
   var idx = document.getElementById('rp-sup').value;
   var sel = document.getElementById('rp-cosech');
@@ -2363,11 +2305,10 @@ function initHistorial() {
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
-  if (evals.length === 0) {
-    cargarDesdeGAS().then(function() { filtrarHistorial(); });
-  } else {
-    filtrarHistorial();
-  }
+  // Mostrar lo que hay en local mientras carga GAS
+  filtrarHistorial();
+  // Siempre recargar desde GAS para tener datos frescos
+  cargarDesdeGAS().then(function() { filtrarHistorial(); });
 }
 
 function filtrarHistorial() {
@@ -2407,11 +2348,17 @@ function renderHistorialFiltrado() {
   count.textContent = evalsFiltradas.length + ' evaluación' + (evalsFiltradas.length !== 1 ? 'es' : '');
 
   if (!evalsFiltradas.length) {
-    hb.innerHTML = '<div class="empty">Sin evaluaciones para los filtros seleccionados</div>';
+    var totalSheet = evals.length;
+    var totalCola  = leerCola().length;
+    var info = totalSheet + ' en Sheet, ' + totalCola + ' pendientes locales';
+    hb.innerHTML = '<div class="empty"><i class="ti ti-list-search" style="font-size:24px;display:block;margin-bottom:8px;"></i>'
+      + 'Sin evaluaciones para los filtros seleccionados<br>'
+      + '<span style="font-size:10px;margin-top:6px;display:block;color:var(--tx3);">(' + info + ')</span></div>';
     return;
   }
 
   var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
+  var idsSincHist = new Set(evals.map(function(e) { return e.id; }));
   hb.innerHTML = evalsFiltradas.slice().reverse().map(function(e) {
     var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
       .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
@@ -2419,14 +2366,15 @@ function renderHistorialFiltrado() {
       ? '<span class="tag tag-bad"> +' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
       : '<span class="tag tag-ok">' + e.diasCiclo + 'd </span>';
     var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
+    var pendTag = (e.id && !idsSincHist.has(e.id)) ? '<span class="tag" style="background:var(--a50);color:var(--a600);margin-left:4px;font-size:9px;">⏳</span>' : '';
     return '<div class="hrow">'
-      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
+      + '<span style="font-weight:500">' + e.cosechero + pendTag + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
       + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
       + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma||'') + '<br>' + cicloTag + '</span>'
       + '<span><div class="mini-pills">' + pills + '</div></span>'
       + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
-      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
-      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
+      + '<span style="font-weight:700;color:' + vCol + '">' + (e.pctVerde||0).toFixed(1) + '%</span>'
+      + '<span><span class="tag ' + (e.cal&&e.cal.cls||'tag-ok') + '">' + (e.cal&&e.cal.nota||'?') + ' — ' + (e.cal&&e.cal.label||'') + '</span></span>'
       + '</div>';
   }).join('');
 }
