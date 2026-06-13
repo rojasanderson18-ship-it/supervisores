@@ -1756,11 +1756,21 @@ function cargarDesdeGAS() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok && data.data.length > 0) {
+        var normFecha = function(f) {
+          if (!f) return '';
+          var s = String(f).trim();
+          // ISO: "2026-06-13T..." → "2026-06-13"
+          if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+          // DD/MM/YYYY → "2026-06-13"
+          var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+          return s.length >= 10 ? s.substring(0, 10) : s;
+        };
         evals = data.data.map(function(r) {
           return {
             supervisor: r['Supervisor'], supIdx: SUPS.indexOf(r['Supervisor']),
             cosechero: r['Cosechero'], cosechCod: r['Código'],
-            lote: r['Frente/Lote'], palma: r['Tipo Palma'], fecha: (function(f){ if(!f) return ''; var s = String(f).trim(); return s.length >= 10 ? s.substring(0,10) : s; })(r['Fecha']),
+            lote: r['Frente/Lote'], palma: r['Tipo Palma'], fecha: normFecha(r['Fecha']),
             diasCiclo: parseFloat(r['Días Ciclo'])||0, maxCiclo: CICLO_MAX[r['Tipo Palma']]||0,
             fueraCiclo: r['Fuera Ciclo']==='SÍ',
             racimos: { maduro: parseFloat(r['Racimos Maduros'])||0, sobremaduro: parseFloat(r['Racimos Sobremaduro'])||0, verde: parseFloat(r['Racimos Verdes'])||0, podrido: parseFloat(r['Racimos Podridos'])||0 },
@@ -2366,10 +2376,15 @@ function filtrarHistorial() {
   var sup   = document.getElementById('hist-sup').value;
   var cal   = document.getElementById('hist-cal').value;
 
-  evalsFiltradas = evals.filter(function(e) {
+  // Incluir evaluaciones del Sheet + las pendientes en cola local
+  var idsSinc = new Set(evals.map(function(e) { return e.id; }));
+  var colaItems = leerCola().filter(function(c) { return !idsSinc.has(c.id); });
+  var todos = evals.concat(colaItems);
+
+  evalsFiltradas = todos.filter(function(e) {
     var fechaOk = (!desde || e.fecha >= desde) && (!hasta || e.fecha <= hasta);
     var supOk   = !sup || e.supervisor === sup;
-    var calOk   = !cal || e.cal.nota === cal;
+    var calOk   = !cal || (e.cal && e.cal.nota === cal);
     return fechaOk && supOk && calOk;
   });
 
@@ -3221,12 +3236,21 @@ function exportarKML() {
     var supOk = supFilt === 'todos' || e.supervisor === supFilt;
     return e.fecha === fecha && supOk && e.lat && e.lng;
   });
-  // Ruta viene del Sheet (ya cargada en rutaData)
-  var trackPts = (rutaData || []).filter(function(p) {
-    var fechaOk = p.fecha === fecha;
-    var supOk   = supFilt === 'todos' || p.sup === supFilt;
-    return fechaOk && supOk;
-  }).sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
+  // Ruta: Sheet + localStorage (igual que renderMapa)
+  var ptsSheet = (rutaData || []).filter(function(p) {
+    return p.fecha === fecha && (supFilt === 'todos' || p.sup === supFilt);
+  });
+  var ptsLocal = [];
+  try {
+    var tsEnSheet = new Set(ptsSheet.map(function(p){ return p.ts; }));
+    ptsLocal = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]').filter(function(p) {
+      return p.fecha === fecha
+        && (supFilt === 'todos' || p.sup === supFilt)
+        && !tsEnSheet.has(p.ts);
+    });
+  } catch(e) {}
+  var trackPts = ptsSheet.concat(ptsLocal)
+    .sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
   if (!evsFecha.length && !trackPts.length) { alert('No hay datos de ubicación para esta fecha.'); return; }
 
   var supColors = {'Juan Carlos Oviedo':'jco','Brayan Pérez':'bp'};
