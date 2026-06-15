@@ -467,7 +467,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="crit-grid"></div>
     </div>
 
-    <!-- 5. Observaciones + Guardar -->
+    <!-- 5. Firma digital (opcional) -->
+    <div class="stitle"><i class="ti ti-signature"></i> Firma del cosechero <span style="font-size:10px;font-weight:400;color:var(--tx3);text-transform:none;">(opcional)</span></div>
+    <div class="firma-wrap" id="firma-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span id="firma-status" style="font-size:12px;color:var(--tx2);display:flex;align-items:center;gap:5px;">
+          <i class="ti ti-pencil"></i> Dibuja la firma arriba
+        </span>
+        <div class="firma-btns">
+          <button type="button" onclick="limpiarFirma()" style="padding:5px 12px;background:var(--bg2);border:.5px solid var(--bd2);border-radius:var(--rr);font-size:12px;color:var(--tx2);cursor:pointer;">
+            <i class="ti ti-trash" style="font-size:12px;vertical-align:-1px"></i> Borrar
+          </button>
+        </div>
+      </div>
+      <canvas id="firma-canvas" class="firma-canvas" width="600" height="160"></canvas>
+    </div>
+
+    <!-- 6. Observaciones + Guardar -->
     <div class="stitle"><i class="ti ti-note"></i> Observaciones</div>
     <textarea class="obs" id="inp-obs" placeholder="Novedades, incidencias o recomendaciones..."></textarea>
     <div class="error-banner" id="error-banner"><i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><span id="error-msg"></span></div>
