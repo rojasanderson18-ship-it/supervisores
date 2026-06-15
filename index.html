@@ -674,7 +674,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div id="tend-empty" class="empty" style="display:none;">
       <i class="ti ti-chart-line" style="font-size:26px;display:block;margin-bottom:8px;"></i>
-      Cargando datos de tendencias...
+      Sin evaluaciones registradas aún.<br><span style="font-size:11px;margin-top:4px;display:block;">Las tendencias aparecen cuando hay evaluaciones en el Sheet.</span>
     </div>
   </div>
 
@@ -1975,22 +1975,6 @@ function inicioFinSemana(fechaStr) {
 
 
 
-function compartirReporte() {
-  if (navigator.share) {
-    var texto = document.getElementById('rp-contenido').innerText;
-    var cosechEl = document.getElementById('rp-cosech');
-    var nombre = cosechEl && cosechEl.value
-      ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
-      : 'Grupo';
-    navigator.share({
-      title: 'Reporte Cosecha — ' + nombre,
-      text: ' Reporte de calidad cosecha\nPalma Grande S.A.S\n\n' + texto
-    }).catch(function() {});
-  } else {
-    window.print();
-  }
-}
-
 function rpOnSupChange() {
   var idx = document.getElementById('rp-sup').value;
   var sel = document.getElementById('rp-cosech');
@@ -2486,17 +2470,75 @@ function setTendVista(v, btn) {
   renderTendencias();
 }
 
+function buildTendenciasLocal() {
+  // Construir tendencias desde evals en memoria (no requiere GAS)
+  if (!evals.length) return null;
+  var semSet = {};
+  var cosMap = {};
+  var supMap = {};
+  evals.forEach(function(e) {
+    if (!e.fecha) return;
+    var sem = semanaDeEval(e.fecha);
+    if (!sem) return;
+    semSet[sem] = true;
+    var cod = e.cosechCod || e.cosechero;
+    if (!cosMap[cod]) cosMap[cod] = { nombre: e.cosechero, supervisor: e.supervisor, semMap: {} };
+    if (!cosMap[cod].semMap[sem]) cosMap[cod].semMap[sem] = { vals: [], proms: [] };
+    cosMap[cod].semMap[sem].vals.push(e.pctVerde);
+    cosMap[cod].semMap[sem].proms.push(e.prom || 0);
+    if (!supMap[e.supervisor]) supMap[e.supervisor] = { semMap: {} };
+    if (!supMap[e.supervisor].semMap[sem]) supMap[e.supervisor].semMap[sem] = [];
+    supMap[e.supervisor].semMap[sem].push(e.pctVerde);
+  });
+  var semanas = Object.keys(semSet).sort();
+  // Normalizar a arrays indexados por semana
+  Object.keys(cosMap).forEach(function(cod) {
+    var c = cosMap[cod];
+    c.semanas = semanas.map(function(s) {
+      var d = c.semMap[s];
+      if (!d || !d.vals.length) return null;
+      return Math.round(d.vals.reduce(function(a,v){return a+v;},0)/d.vals.length * 10)/10;
+    });
+    c.proms = semanas.map(function(s) {
+      var d = c.semMap[s];
+      if (!d || !d.proms.length) return null;
+      return Math.round(d.proms.reduce(function(a,v){return a+v;},0)/d.proms.length * 10)/10;
+    });
+  });
+  Object.keys(supMap).forEach(function(sup) {
+    var s = supMap[sup];
+    s.semanas = semanas.map(function(sem) {
+      var vals = s.semMap[sem];
+      if (!vals || !vals.length) return null;
+      return Math.round(vals.reduce(function(a,v){return a+v;},0)/vals.length * 10)/10;
+    });
+  });
+  return { semanas: semanas, cosecheros: cosMap, supervisores: supMap };
+}
+
 function cargarTendencias() {
-  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') { renderTendencias(); return; }
   var btn = document.querySelector('#sec-tendencias button[onclick="cargarTendencias()"]');
+  // Mostrar datos locales de inmediato
+  if (evals.length > 0) { tendData = buildTendenciasLocal(); renderTendencias(); }
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return;
   if (btn) { btn.innerHTML = '<i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i>'; btn.disabled = true; }
-  fetch(GAS_URL + '?action=getTendencias')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (d.ok) { tendData = d.data; renderTendencias(); }
-      if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; }
-    })
-    .catch(function(){ if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; } });
+  // Intentar cargar datos más completos del GAS
+  var promEvals = evals.length === 0 ? cargarDesdeGAS() : Promise.resolve();
+  promEvals.then(function() {
+    fetch(GAS_URL + '?action=getTendencias')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.ok && d.data) { tendData = d.data; }
+        else { tendData = buildTendenciasLocal(); }
+        renderTendencias();
+        if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; }
+      })
+      .catch(function(){
+        tendData = buildTendenciasLocal();
+        renderTendencias();
+        if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; }
+      });
+  });
 }
 
 function calNum(pct) {
@@ -3305,6 +3347,11 @@ function showTab(id, btn) {
 
   if (id === 'mapa') {
     if (mapaAcceso) setTimeout(function() { iniciarMapa(); }, 150);
+    return;
+  }
+
+  if (id === 'tendencias') {
+    cargarTendencias();
     return;
   }
 
