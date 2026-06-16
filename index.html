@@ -470,6 +470,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
         <div class="racimo-pct" id="pct-podrido">0%</div>
         </div>
+        <div class="rg">
+          <div class="rlabel" style="background:#E8E0F7;color:#5B2D9E;"><i class="ti ti-arrow-left" style="font-size:14px"></i>Dejados</div>
+          <div class="counter-wrap">
+          <button type="button" class="counter-btn" onclick="stepCounter('r-dejados',-1)">−</button>
+          <input type="number" class="rinput" id="r-dejados" min="0" value="0" readonly>
+          <button type="button" class="counter-btn" onclick="stepCounter('r-dejados',1)">+</button>
+        </div>
+        <div class="racimo-pct" id="lbl-dejados" style="color:var(--tx3);">No contados</div>
+        </div>
       </div>
       <div class="tot-row">
         <div class="tot-box" id="tot-box">
@@ -910,6 +919,7 @@ const CRITERIOS   = [
   {id:'danio',  n:'Daño mecánico / cortes', p:1.5},
   {id:'pedu',   n:'Pedúnculo largo',         p:1},
   {id:'hoja',   n:'Disposición de hoja',     p:1},
+  {id:'plato',  n:'Estado del plato',        p:1},
 ];
 
 // ══ ESTADO ═══════════════════════════════════════════════════════════════════
@@ -1004,6 +1014,7 @@ function getRacimos() {
     sobremaduro: Math.max(0, parseInt(document.getElementById('r-sobremaduro').value) || 0),
     verde:       Math.max(0, parseInt(document.getElementById('r-verde').value)       || 0),
     podrido:     Math.max(0, parseInt(document.getElementById('r-podrido').value)     || 0),
+    dejados:     Math.max(0, parseInt(document.getElementById('r-dejados').value)     || 0),
   };
 }
 
@@ -1449,7 +1460,7 @@ function guardar() {
     diasCiclo:    dias,
     maxCiclo:     max,
     fueraCiclo:   dias > max,
-    racimos:      {maduro: r.maduro, sobremaduro: r.sobremaduro, verde: r.verde, podrido: r.podrido},
+    racimos:      {maduro: r.maduro, sobremaduro: r.sobremaduro, verde: r.verde, podrido: r.podrido, dejados: r.dejados},
     totalRacimos: tot,
     pctVerde:     pctVerde,
     cal:          cal,
@@ -1458,7 +1469,7 @@ function guardar() {
     lat:          null,
     lng:          null,
     hora:         new Date().toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'}),
-    pts:          {suelto: pts.suelto, danio: pts.danio, pedu: pts.pedu, hoja: pts.hoja},
+    pts:          {suelto: pts.suelto, danio: pts.danio, pedu: pts.pedu, hoja: pts.hoja, plato: pts.plato},
     prom:         Math.round(calcP(pts) * 10) / 10
   };
 
@@ -1508,7 +1519,7 @@ function guardar() {
   document.getElementById('inp-obs').value     = '';
   document.getElementById('ciclo-banner').style.display = 'none';
   document.getElementById('cal-cosechero').style.display = 'none';
-  ['r-maduro','r-sobremaduro','r-verde','r-podrido'].forEach(function(id) {
+  ['r-maduro','r-sobremaduro','r-verde','r-podrido','r-dejados'].forEach(function(id) {
     document.getElementById(id).value = 0;
   });
   actualizarRacimos();
@@ -1808,8 +1819,8 @@ function upd() {
       var pctV     = racTot > 0 ? Math.round(verdes / racTot * 1000) / 10 : 0;
       var pctVmalo = pctV > VERDE_LIMITE;
       var pm       = ev.reduce(function(a,e) { return a + e.prom; }, 0) / ev.length;
-      var racsAcum = {maduro:0, sobremaduro:0, verde:0, podrido:0};
-      ev.forEach(function(e) { MAD_KEYS.forEach(function(k) { racsAcum[k] += e.racimos[k] || 0; }); });
+      var racsAcum = {maduro:0, sobremaduro:0, verde:0, podrido:0, dejados:0};
+      ev.forEach(function(e) { MAD_KEYS.forEach(function(k) { racsAcum[k] += e.racimos[k] || 0; }); racsAcum.dejados += e.racimos.dejados || 0; });
       var rt = racTot || 1;
       var fueraCiclo = ev.filter(function(e) { return e.fueraCiclo; }).length;
 
@@ -1846,6 +1857,7 @@ function upd() {
         + '<div class="mad-pill mp-s"><span class="mad-pct">' + racsAcum.sobremaduro + '</span>' + Math.round(racsAcum.sobremaduro/rt*100) + '%<br>Sobrem.</div>'
         + '<div class="mad-pill mp-v"><span class="mad-pct">' + racsAcum.verde + '</span>' + Math.round(racsAcum.verde/rt*100) + '%<br>Verde</div>'
         + '<div class="mad-pill mp-p"><span class="mad-pct">' + racsAcum.podrido + '</span>' + Math.round(racsAcum.podrido/rt*100) + '%<br>Podrido</div>'
+        + (racsAcum.dejados > 0 ? '<div class="mad-pill" style="background:#F0EBF8;color:#5B2D9E;"><span class="mad-pct">' + racsAcum.dejados + '</span>Dejados</div>' : '')
         + '</div>'
         + '<div class="stitle" style="margin:.875rem 0 .35rem;font-size:10px;"><i class="ti ti-chart-bar"></i> Parámetros de calidad</div>'
         + bars;
@@ -2059,10 +2071,10 @@ function cargarDesdeGAS() {
             lote: r['Frente/Lote'], palma: r['Tipo Palma'], fecha: (function(f){ if(!f) return ''; var s = String(f).trim(); return s.length >= 10 ? s.substring(0,10) : s; })(r['Fecha']),
             diasCiclo: parseFloat(r['Días Ciclo'])||0, maxCiclo: CICLO_MAX[r['Tipo Palma']]||0,
             fueraCiclo: r['Fuera Ciclo']==='SÍ',
-            racimos: { maduro: parseFloat(r['Racimos Maduros'])||0, sobremaduro: parseFloat(r['Racimos Sobremaduro'])||0, verde: parseFloat(r['Racimos Verdes'])||0, podrido: parseFloat(r['Racimos Podridos'])||0 },
+            racimos: { maduro: parseFloat(r['Racimos Maduros'])||0, sobremaduro: parseFloat(r['Racimos Sobremaduro'])||0, verde: parseFloat(r['Racimos Verdes'])||0, podrido: parseFloat(r['Racimos Podridos'])||0, dejados: parseFloat(r['Racimos Dejados'])||0 },
             totalRacimos: parseFloat(r['Total Racimos'])||0, pctVerde: parseFloat(r['% Verde'])||0,
             cal: { nota: r['Calificación Nota'], label: r['Calificación Label'], cls: r['Calificación Nota']==='A'?'tag-ok':r['Calificación Nota']==='B'?'tag-warn':'tag-bad' },
-            pts: { suelto: parseFloat(r['Fruto Suelto'])||0, danio: parseFloat(r['Daño Mecánico'])||0, pedu: parseFloat(r['Pedúnculo Largo'])||0, hoja: parseFloat(r['Disposición Hoja'])||0 },
+            pts: { suelto: parseFloat(r['Fruto Suelto'])||0, danio: parseFloat(r['Daño Mecánico'])||0, pedu: parseFloat(r['Pedúnculo Largo'])||0, hoja: parseFloat(r['Disposición Hoja'])||0, plato: parseFloat(r['Estado del Plato'])||0 },
             prom: parseFloat(r['Prom Parámetros'])||0, obs: r['Observaciones']||''
           };
         });
@@ -2435,10 +2447,11 @@ function renderReporteCosechero(cod, evs, periodo, fecha) {
   var sup    = evs.length > 0 ? evs[0].supervisor : '—';
 
   var totRac  = evs.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
-  var racsAcum = {maduro:0, sobremaduro:0, verde:0, podrido:0};
+  var racsAcum = {maduro:0, sobremaduro:0, verde:0, podrido:0, dejados:0};
   MAD_KEYS.forEach(function(k) {
     racsAcum[k] = evs.reduce(function(a,e) { return a + (e.racimos[k]||0); }, 0);
   });
+  racsAcum.dejados = evs.reduce(function(a,e) { return a + (e.racimos.dejados||0); }, 0);
   var pctVerde = totRac > 0 ? Math.round(racsAcum.verde / totRac * 1000) / 10 : 0;
   var cal      = calFromPct(pctVerde);
 
@@ -2476,6 +2489,7 @@ function renderReporteCosechero(cod, evs, periodo, fecha) {
     {k:'sobremaduro',bg:'#FAEEDA',col:'#854F0B',lbl:'Sobremaduro'},
     {k:'verde',bg:'#EEEDFE',col:'#534AB7',lbl:'Verde'},
     {k:'podrido',bg:'#FCEBEB',col:'#A32D2D',lbl:'Podrido'},
+    {k:'dejados',bg:'#F0EBF8',col:'#5B2D9E',lbl:'Dejados'},
   ];
 
   var html = '<div class="reporte-wrap">'
@@ -2696,6 +2710,7 @@ function renderHistorialFiltrado() {
   hb.innerHTML = evalsFiltradas.slice().reverse().map(function(e) {
     var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
       .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
+    if (e.racimos.dejados > 0) pills += '<span class="mini-pill" style="background:#F0EBF8;color:#5B2D9E;">' + e.racimos.dejados + ' Dejados</span>';
     var cicloTag = e.fueraCiclo
       ? '<span class="tag tag-bad"> +' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
       : '<span class="tag tag-ok">' + e.diasCiclo + 'd </span>';
