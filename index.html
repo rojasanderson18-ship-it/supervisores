@@ -164,6 +164,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .prog-track{height:7px;background:var(--bg2);border-radius:4px;overflow:hidden;border:.5px solid var(--bd);}
 .prog-fill{height:100%;border-radius:4px;transition:width .4s;background:var(--a400);}
 .prog-fill.done{background:var(--g400);}
+/* Cosechero del mes */
+.mvp-card{background:linear-gradient(135deg,#FBF3DD,var(--bg));border:.5px solid #E8D49A;border-radius:var(--rrl);padding:14px 18px;margin-bottom:14px;}
+.mvp-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+.mvp-nav{display:flex;align-items:center;gap:8px;}
+.mvp-nav-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--bg2);border:.5px solid var(--bd);color:var(--tx2);font-size:12px;cursor:pointer;}
+.mvp-nav-btn:disabled{opacity:.35;cursor:default;}
+.mvp-mes{font-size:11px;font-weight:700;color:#B8860B;text-transform:uppercase;letter-spacing:.06em;}
+.mvp-body{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.mvp-badge{width:50px;height:50px;border-radius:50%;background:#B8860B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 2px 8px rgba(184,134,11,.3);}
+.mvp-name{font-size:17px;font-weight:700;margin-bottom:2px;}
+.mvp-meta{font-size:12px;color:var(--tx2);}
+.mvp-stats{display:flex;gap:16px;margin-left:auto;text-align:center;}
+.mvp-stat-val{font-size:17px;font-weight:700;color:var(--g600);}
+.mvp-stat-lbl{font-size:9px;color:var(--tx3);}
+.mvp-score{font-size:10px;color:#B8860B;margin-top:8px;padding-top:8px;border-top:.5px solid #E8D49A;}
+.mvp-empty{font-size:12px;color:var(--tx3);text-align:center;padding:8px 0;}
+/* Periodo tabs (% verde) */
+.period-tabs{display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:2px;border:.5px solid var(--bd);}
+.period-tab{font-size:9px;padding:2px 6px;border-radius:5px;color:var(--tx3);cursor:pointer;font-weight:600;}
+.period-tab.active{background:var(--bg2);color:var(--g600);}
+/* Mejor/peor del día */
+.tb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem;}
+.tb-card{border-radius:var(--rr);padding:12px;border:.5px solid var(--bd);}
+.tb-card.best{background:var(--g50);border-color:var(--g400);}
+.tb-card.worst{background:var(--r50);border-color:var(--r400);}
+.tb-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.tb-lbl.best{color:var(--g600);}
+.tb-lbl.worst{color:var(--r600);}
+.tb-name{font-size:14px;font-weight:600;margin-bottom:2px;}
+.tb-meta{font-size:11px;color:var(--tx2);margin-bottom:8px;}
+.tb-pct{font-size:22px;font-weight:700;}
+.tb-pct.best{color:var(--g600);}
+.tb-pct.worst{color:var(--r600);}
+/* Barras apiladas racimos por mes */
+.stack-legend{display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2);}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.stack-row{display:grid;grid-template-columns:34px 1fr 42px;gap:10px;align-items:center;padding:5px 0;}
+.stack-mes{font-size:11px;color:var(--tx2);font-weight:600;}
+.stack-bar{height:16px;border-radius:4px;overflow:hidden;display:flex;background:var(--bg2);}
+.stack-val{font-size:10px;color:var(--tx3);text-align:right;}
 /* Historial */
 .htbl{background:var(--bg);border:.5px solid var(--bd);border-radius:var(--rrl);overflow:hidden;}
 .hhdr{display:grid;grid-template-columns:1.1fr 1.2fr 1.1fr 1.8fr 0.8fr 0.7fr 0.8fr;gap:5px;padding:9px 12px;background:var(--bg2);font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--bd);}
@@ -488,19 +529,50 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </button>
       </div>
     </div>
+    <!-- Cosechero del mes -->
+    <div class="mvp-card" id="mvp-card"></div>
+
     <div class="metrics">
       <div class="mcard"><div class="mlbl">Evaluaciones hoy</div><div class="mval" id="m-hoy">0</div><div class="msub">mín. 4/sup.</div></div>
       <div class="mcard"><div class="mlbl">Total general</div><div class="mval" id="m-tot">0</div><div class="msub">registradas</div></div>
       <div class="mcard"><div class="mlbl">Racimos hoy</div><div class="mval" id="m-rac">0</div><div class="msub">evaluados</div></div>
-      <div class="mcard"><div class="mlbl">% Verde global</div><div class="mval" id="m-verde">—</div><div class="msub">límite 3%</div></div>
+      <div class="mcard">
+        <div class="mlbl">
+          <span>% Verde global</span>
+          <span class="period-tabs" id="vg-period-tabs">
+            <span class="period-tab active" onclick="setVGlobalPeriodo('dia',this)">Día</span>
+            <span class="period-tab" onclick="setVGlobalPeriodo('semana',this)">Sem.</span>
+            <span class="period-tab" onclick="setVGlobalPeriodo('mes',this)">Mes</span>
+          </span>
+        </div>
+        <div class="mval" id="m-verde">— <span id="vg-trend"></span></div>
+        <div class="msub" id="vg-sub">límite 3%</div>
+      </div>
     </div>
     <div class="card" style="padding:1rem 1.25rem;margin-bottom:1rem;">
       <div class="stitle" style="margin:0 0 .75rem;"><i class="ti ti-target"></i> Meta diaria — mínimo 4 evaluaciones por supervisor</div>
       <div id="prog-dashboard"></div>
     </div>
+
+    <!-- Mejor / peor cosechero del día -->
+    <div class="tb-grid" id="tb-grid"></div>
+
     <div class="sgrid" id="sgrid">
       <div class="scard"><div class="empty"><i class="ti ti-clipboard"></i>Sin evaluaciones aún</div></div>
       <div class="scard"><div class="empty"><i class="ti ti-clipboard"></i>Sin evaluaciones aún</div></div>
+    </div>
+
+    <!-- Racimos por mes — barras apiladas -->
+    <div class="stitle" style="margin:1.1rem 0 .5rem;"><i class="ti ti-chart-bar"></i> Racimos por mes</div>
+    <div class="card" style="padding:1rem 1.25rem;">
+      <div class="stack-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--g600);"></div>Maduro</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--a400);"></div>Sobremaduro</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--p600);"></div>Verde</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--r600);"></div>Podrido</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#5B2D9E;"></div>Dejados</div>
+      </div>
+      <div id="stack-meses"><div class="empty" style="padding:.5rem 0"><i class="ti ti-chart-bar-off"></i>Sin datos suficientes</div></div>
     </div>
   </div>
 
@@ -1466,22 +1538,249 @@ function renderProgSup() {
 function sc(v) { return v >= 4 ? 'var(--g400)' : v >= 3 ? 'var(--a400)' : 'var(--r400)'; }
 function sl(v) { return v >= 4 ? 'Óptimo' : v >= 3 ? 'Aceptable' : 'Crítico'; }
 
+// ── Cosechero del mes ──────────────────────────────────────────────────────
+var MESES_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var mvpMesOffset = 0;
+
+function mesKeyDe(fecha) { return fecha ? String(fecha).substring(0,7) : ''; }
+
+function mesesConDatos() {
+  var set = {};
+  evals.forEach(function(e) { var k = mesKeyDe(e.fecha); if (k) set[k] = true; });
+  return Object.keys(set).sort().reverse(); // más reciente primero
+}
+
+function calcMVPMes(mesKey) {
+  var ev = evals.filter(function(e) { return mesKeyDe(e.fecha) === mesKey; });
+  if (!ev.length) return null;
+  var porCos = {};
+  ev.forEach(function(e) {
+    var cod = e.cosechCod;
+    if (!cod) return;
+    if (!porCos[cod]) porCos[cod] = { cod: cod, nombre: e.cosechero, sup: e.supervisor, rac: 0, verde: 0, promSum: 0, n: 0 };
+    porCos[cod].rac   += e.totalRacimos;
+    porCos[cod].verde += e.racimos.verde;
+    porCos[cod].promSum += e.prom || 0;
+    porCos[cod].n++;
+  });
+  var lista = Object.values(porCos).filter(function(c) { return c.rac > 0; }).map(function(c) {
+    var pctVerde = Math.round(c.verde / c.rac * 1000) / 10;
+    var calidad  = Math.round(c.promSum / c.n * 10) / 10;
+    var goodVerde   = Math.max(0, 100 - pctVerde * 20);
+    var goodCalidad = calidad / 5 * 100;
+    c.pctVerde = pctVerde;
+    c.calidad  = calidad;
+    c.score    = Math.round((goodVerde * 0.7 + goodCalidad * 0.3) * 10) / 10;
+    return c;
+  });
+  if (!lista.length) return null;
+  lista.sort(function(a,b) { return b.score - a.score; });
+  return lista[0];
+}
+
+function renderMVPCard() {
+  var meses = mesesConDatos();
+  var box = document.getElementById('mvp-card');
+  if (!meses.length) {
+    box.innerHTML = '<div class="mvp-empty"><i class="ti ti-medal" style="font-size:18px;display:block;margin-bottom:4px;color:var(--tx3);"></i>Sin datos suficientes para calcular el cosechero del mes</div>';
+    return;
+  }
+  if (mvpMesOffset < 0) mvpMesOffset = 0;
+  if (mvpMesOffset > meses.length - 1) mvpMesOffset = meses.length - 1;
+  var mesKey = meses[mvpMesOffset];
+  var partes = mesKey.split('-');
+  var mesLabel = MESES_NOMBRE[parseInt(partes[1],10)-1] + ' ' + partes[0];
+  var mvp = calcMVPMes(mesKey);
+
+  var nav = '<div class="mvp-top">'
+    + '<div class="mvp-nav">'
+    + '<span class="mvp-nav-btn" onclick="navMvpMes(1)" ' + (mvpMesOffset >= meses.length-1 ? 'style="opacity:.35;pointer-events:none;"' : '') + '><i class="ti ti-chevron-left"></i></span>'
+    + '<span class="mvp-mes">' + mesLabel + '</span>'
+    + '<span class="mvp-nav-btn" onclick="navMvpMes(-1)" ' + (mvpMesOffset <= 0 ? 'style="opacity:.35;pointer-events:none;"' : '') + '><i class="ti ti-chevron-right"></i></span>'
+    + '</div>'
+    + '<span style="font-size:10px;color:var(--tx3);">' + meses.length + ' mes' + (meses.length>1?'es':'') + ' con datos</span>'
+    + '</div>';
+
+  if (!mvp) {
+    document.getElementById('mvp-card').innerHTML = nav + '<div class="mvp-empty">Sin evaluaciones registradas en ' + mesLabel + '</div>';
+    return;
+  }
+
+  document.getElementById('mvp-card').innerHTML = nav
+    + '<div class="mvp-body">'
+    + '<div class="mvp-badge"><i class="ti ti-medal"></i></div>'
+    + '<div><div class="mvp-name">' + mvp.nombre + '</div><div class="mvp-meta">' + mvp.cod + ' · ' + mvp.sup + '</div></div>'
+    + '<div class="mvp-stats">'
+    + '<div><div class="mvp-stat-val">' + mvp.pctVerde.toFixed(1) + '%</div><div class="mvp-stat-lbl">% Verde prom.</div></div>'
+    + '<div><div class="mvp-stat-val">' + mvp.calidad.toFixed(1) + '</div><div class="mvp-stat-lbl">Calidad /5</div></div>'
+    + '<div><div class="mvp-stat-val">' + mvp.rac + '</div><div class="mvp-stat-lbl">Racimos</div></div>'
+    + '</div></div>'
+    + '<div class="mvp-score">Puntaje compuesto: 70% % verde + 30% calidad de parámetros</div>';
+}
+
+function navMvpMes(delta) {
+  mvpMesOffset += delta;
+  renderMVPCard();
+}
+
+// ── % Verde global con periodo ───────────────────────────────────────────
+var vGlobalPeriodo = 'dia';
+
+function setVGlobalPeriodo(p, btn) {
+  vGlobalPeriodo = p;
+  document.querySelectorAll('#vg-period-tabs .period-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderVGlobal();
+}
+
+function sumarVerde(lista) {
+  var tot = lista.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
+  var verde = lista.reduce(function(a,e) { return a + e.racimos.verde; }, 0);
+  return tot > 0 ? Math.round(verde / tot * 1000) / 10 : null;
+}
+
+function renderVGlobal() {
+  var dashFecha = document.getElementById('dash-fecha');
+  var hoy = dashFecha && dashFecha.value ? dashFecha.value : fechaColombiaHoy();
+  var mv = document.getElementById('m-verde');
+  var trendEl = document.getElementById('vg-trend');
+  var subEl = document.getElementById('vg-sub');
+
+  var actual, anterior, subTxt;
+  if (vGlobalPeriodo === 'dia') {
+    var d = new Date(hoy); var ayer = new Date(d); ayer.setDate(d.getDate()-1);
+    var ayerStr = fechaStr(ayer);
+    actual   = sumarVerde(evals.filter(function(e) { return e.fecha === hoy; }));
+    anterior = sumarVerde(evals.filter(function(e) { return e.fecha === ayerStr; }));
+    subTxt   = 'límite 3% · vs. ayer';
+  } else if (vGlobalPeriodo === 'semana') {
+    var sf = inicioFinSemana(hoy);
+    actual = sumarVerde(evals.filter(function(e) { return e.fecha >= sf.inicio && e.fecha <= sf.fin; }));
+    var dIni = new Date(sf.inicio); var prevIni = new Date(dIni); prevIni.setDate(dIni.getDate()-7);
+    var prevFin = new Date(prevIni); prevFin.setDate(prevIni.getDate()+6);
+    var prevIniStr = fechaStr(prevIni), prevFinStr = fechaStr(prevFin);
+    anterior = sumarVerde(evals.filter(function(e) { return e.fecha >= prevIniStr && e.fecha <= prevFinStr; }));
+    subTxt = 'límite 3% · vs. semana anterior';
+  } else {
+    var mesKey = mesKeyDe(hoy);
+    actual = sumarVerde(evals.filter(function(e) { return mesKeyDe(e.fecha) === mesKey; }));
+    var partes = mesKey.split('-');
+    var prevDate = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-2, 1);
+    var prevMesKey = prevDate.getFullYear() + '-' + String(prevDate.getMonth()+1).padStart(2,'0');
+    anterior = sumarVerde(evals.filter(function(e) { return mesKeyDe(e.fecha) === prevMesKey; }));
+    subTxt = 'límite 3% · vs. mes anterior';
+  }
+
+  if (actual === null) {
+    mv.innerHTML = '—'; trendEl.innerHTML = ''; subEl.textContent = subTxt;
+    mv.style.color = 'var(--tx)';
+    return;
+  }
+  mv.style.color = actual > 3 ? 'var(--r600)' : 'var(--tx)';
+  mv.innerHTML = actual.toFixed(1) + '%';
+  if (anterior !== null) {
+    var diff = Math.round((actual - anterior) * 10) / 10;
+    if (diff === 0) {
+      trendEl.innerHTML = '<span style="font-size:11px;color:var(--tx3);font-weight:600;">· sin cambio</span>';
+    } else {
+      var subiendo = diff > 0;
+      var malo = subiendo; // subir % verde es malo
+      var color = malo ? 'var(--r600)' : 'var(--g600)';
+      var icon  = subiendo ? 'ti-trending-up' : 'ti-trending-down';
+      trendEl.innerHTML = '<span style="font-size:11px;font-weight:600;color:' + color + ';"><i class="ti ' + icon + '" style="vertical-align:-1px"></i> ' + (subiendo?'+':'') + diff.toFixed(1) + '%</span>';
+    }
+    subEl.textContent = subTxt + ': ' + anterior.toFixed(1) + '%';
+  } else {
+    trendEl.innerHTML = '';
+    subEl.textContent = subTxt + ': sin datos';
+  }
+}
+
+// ── Mejor / peor cosechero del día ───────────────────────────────────────
+function renderBestWorstDia(evHoy) {
+  var box = document.getElementById('tb-grid');
+  var porCos = {};
+  evHoy.forEach(function(e) {
+    var cod = e.cosechCod; if (!cod) return;
+    if (!porCos[cod]) porCos[cod] = { cod: cod, nombre: e.cosechero, sup: e.supervisor, rac: 0, verde: 0, n: 0 };
+    porCos[cod].rac += e.totalRacimos; porCos[cod].verde += e.racimos.verde; porCos[cod].n++;
+  });
+  var lista = Object.values(porCos).filter(function(c) { return c.rac > 0; }).map(function(c) {
+    c.pctVerde = Math.round(c.verde / c.rac * 1000) / 10; return c;
+  }).sort(function(a,b) { return a.pctVerde - b.pctVerde; });
+
+  if (lista.length < 1) {
+    box.innerHTML = '';
+    return;
+  }
+  var mejor = lista[0];
+  var peor  = lista[lista.length-1];
+
+  var card = function(c, tipo) {
+    var cls   = tipo === 'best' ? 'best' : 'worst';
+    var icon  = tipo === 'best' ? 'ti-trophy' : 'ti-alert-circle';
+    var lbl   = tipo === 'best' ? 'Mejor del día' : 'Necesita atención';
+    return '<div class="tb-card ' + cls + '">'
+      + '<div class="tb-lbl ' + cls + '"><i class="ti ' + icon + '"></i> ' + lbl + '</div>'
+      + '<div class="tb-name">' + c.nombre + '</div>'
+      + '<div class="tb-meta">' + c.cod + ' · ' + c.sup + ' · ' + c.n + ' evaluación' + (c.n>1?'es':'') + '</div>'
+      + '<div class="tb-pct ' + cls + '">' + c.pctVerde.toFixed(1) + '%</div>'
+      + '</div>';
+  };
+
+  if (lista.length === 1) {
+    box.innerHTML = card(mejor, 'best');
+  } else {
+    box.innerHTML = card(mejor, 'best') + card(peor, 'worst');
+  }
+}
+
+// ── Racimos por mes — barras apiladas ───────────────────────────────────
+function renderStackMeses() {
+  var box = document.getElementById('stack-meses');
+  var meses = mesesConDatos().slice(0, 6).reverse(); // últimos 6, orden ascendente
+  if (!meses.length) {
+    box.innerHTML = '<div class="empty" style="padding:.5rem 0"><i class="ti ti-chart-bar-off"></i>Sin datos suficientes</div>';
+    return;
+  }
+  var colores = { maduro:'var(--g600)', sobremaduro:'var(--a400)', verde:'var(--p600)', podrido:'var(--r600)', dejados:'#5B2D9E' };
+  var html = meses.map(function(mesKey) {
+    var ev = evals.filter(function(e) { return mesKeyDe(e.fecha) === mesKey; });
+    var sums = { maduro:0, sobremaduro:0, verde:0, podrido:0, dejados:0 };
+    ev.forEach(function(e) {
+      sums.maduro += e.racimos.maduro||0; sums.sobremaduro += e.racimos.sobremaduro||0;
+      sums.verde += e.racimos.verde||0; sums.podrido += e.racimos.podrido||0;
+      sums.dejados += e.racimos.dejados||0;
+    });
+    var totalConDejados = sums.maduro+sums.sobremaduro+sums.verde+sums.podrido+sums.dejados;
+    var totalRacimos = sums.maduro+sums.sobremaduro+sums.verde+sums.podrido;
+    var partes = mesKey.split('-');
+    var mesLbl = MESES_NOMBRE[parseInt(partes[1],10)-1].substring(0,3);
+    var segs = ['maduro','sobremaduro','verde','podrido','dejados'].map(function(k) {
+      var pct = totalConDejados > 0 ? (sums[k]/totalConDejados*100) : 0;
+      return pct > 0 ? '<div style="width:' + pct + '%;background:' + colores[k] + ';" title="' + (MAD_LABEL[k]||k) + ': ' + sums[k] + '"></div>' : '';
+    }).join('');
+    return '<div class="stack-row">'
+      + '<div class="stack-mes">' + mesLbl + '</div>'
+      + '<div class="stack-bar">' + segs + '</div>'
+      + '<div class="stack-val">' + totalRacimos + '</div>'
+      + '</div>';
+  }).join('');
+  box.innerHTML = html;
+}
+
 function upd() {
   var dashFecha = document.getElementById('dash-fecha');
   var hoy = dashFecha && dashFecha.value ? dashFecha.value : new Date().toISOString().split('T')[0];
   var evHoy  = evals.filter(function(e) { return e.fecha === hoy; });
-  var totRacG = evals.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
-  var totVerde = evals.reduce(function(a,e) { return a + e.racimos.verde; }, 0);
 
   document.getElementById('m-hoy').textContent = evHoy.length;
   document.getElementById('m-tot').textContent = evals.length;
   document.getElementById('m-rac').textContent = evHoy.reduce(function(a,e) { return a + e.totalRacimos; }, 0);
-  var mv = document.getElementById('m-verde');
-  if (totRacG > 0) {
-    var pctG = (totVerde / totRacG * 100).toFixed(1) + '%';
-    mv.textContent = pctG;
-    mv.style.color = (totVerde / totRacG * 100) > 3 ? 'var(--r600)' : 'var(--tx)';
-  } else { mv.textContent = '—'; mv.style.color = 'var(--tx)'; }
+  renderVGlobal();
+  renderMVPCard();
+  renderBestWorstDia(evHoy);
+  renderStackMeses();
 
   // Progreso supervisores
   var pdHtml = '';
