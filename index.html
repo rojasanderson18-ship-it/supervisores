@@ -603,6 +603,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <!-- ══ COMPARATIVA ══ -->
   <div class="sec" id="sec-comparativa">
+    <div class="card" style="padding:.875rem 1.25rem;margin-bottom:.875rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <span class="period-tabs" id="comp-period-tabs">
+          <span class="period-tab" onclick="setCompPeriodo('dia',this)">Hoy</span>
+          <span class="period-tab" onclick="setCompPeriodo('semana',this)">Sem.</span>
+          <span class="period-tab" onclick="setCompPeriodo('mes',this)">Mes</span>
+          <span class="period-tab active" onclick="setCompPeriodo('todo',this)">Todo</span>
+        </span>
+        <span id="comp-count" style="font-size:11px;color:var(--tx3);"></span>
+      </div>
+      <div class="frow" style="margin-bottom:0;">
+        <div class="fg">
+          <label>Desde</label>
+          <input type="date" id="comp-desde" onchange="onCompFechaManual()">
+        </div>
+        <div class="fg">
+          <label>Hasta</label>
+          <input type="date" id="comp-hasta" onchange="onCompFechaManual()">
+        </div>
+      </div>
+    </div>
     <div class="cwrap" id="cwrap">
       <div class="empty"><i class="ti ti-arrows-diff"></i>Registra evaluaciones para ver la comparativa</div>
     </div>
@@ -1688,6 +1709,113 @@ function sumarVerde(lista) {
   return tot > 0 ? Math.round(verde / tot * 1000) / 10 : null;
 }
 
+// ── Comparativa con filtro de fecha ──────────────────────────────────────
+var compPeriodo = 'todo';
+
+function setCompPeriodo(p, btn) {
+  compPeriodo = p;
+  document.getElementById('comp-desde').value = '';
+  document.getElementById('comp-hasta').value = '';
+  document.querySelectorAll('#comp-period-tabs .period-tab').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderComparativa();
+}
+
+function onCompFechaManual() {
+  compPeriodo = 'custom';
+  document.querySelectorAll('#comp-period-tabs .period-tab').forEach(function(b) { b.classList.remove('active'); });
+  renderComparativa();
+}
+
+function rangoCompFechas() {
+  var hoy = fechaColombiaHoy();
+  var desdeInput = document.getElementById('comp-desde').value;
+  var hastaInput = document.getElementById('comp-hasta').value;
+  if (compPeriodo === 'custom') {
+    return { desde: desdeInput || null, hasta: hastaInput || null };
+  }
+  if (compPeriodo === 'dia') return { desde: hoy, hasta: hoy };
+  if (compPeriodo === 'semana') { var sf = inicioFinSemana(hoy); return { desde: sf.inicio, hasta: sf.fin }; }
+  if (compPeriodo === 'mes') {
+    var mesKey = mesKeyDe(hoy), partes = mesKey.split('-');
+    var ult = new Date(parseInt(partes[0],10), parseInt(partes[1],10), 0).getDate();
+    return { desde: mesKey + '-01', hasta: mesKey + '-' + String(ult).padStart(2,'0') };
+  }
+  return { desde: null, hasta: null };
+}
+
+function renderComparativa() {
+  var cw = document.getElementById('cwrap');
+  var cntEl = document.getElementById('comp-count');
+  var rango = rangoCompFechas();
+  var todas = evals.filter(function(e) {
+    if (rango.desde && e.fecha < rango.desde) return false;
+    if (rango.hasta && e.fecha > rango.hasta) return false;
+    return true;
+  });
+  var e1 = todas.filter(function(e) { return e.supervisor === SUPS[0]; });
+  var e2 = todas.filter(function(e) { return e.supervisor === SUPS[1]; });
+
+  if (cntEl) cntEl.textContent = todas.length + ' evaluación' + (todas.length !== 1 ? 'es' : '') + (rango.desde || rango.hasta ? ' en el rango' : ' en total');
+
+  if (!e1.length && !e2.length) {
+    cw.innerHTML = '<div class="empty"><i class="ti ti-arrows-diff"></i>' + (todas.length === 0 && evals.length > 0 ? 'Sin evaluaciones en el rango seleccionado' : 'Registra evaluaciones para ver la comparativa') + '</div>';
+    return;
+  }
+
+  var r1   = e1.reduce(function(a,e) { return a + e.totalRacimos; }, 0) || 1;
+  var r2   = e2.reduce(function(a,e) { return a + e.totalRacimos; }, 0) || 1;
+  var pv1  = e1.length ? Math.round(e1.reduce(function(a,e) { return a+e.racimos.verde; }, 0) / r1 * 1000) / 10 : null;
+  var pv2  = e2.length ? Math.round(e2.reduce(function(a,e) { return a+e.racimos.verde; }, 0) / r2 * 1000) / 10 : null;
+
+  var h = '<div class="cleg">'
+    + '<div class="cli"><div class="cld" style="background:var(--g400)"></div><span>' + SUPS[0] + ' (' + e1.length + ')</span></div>'
+    + '<div class="cli"><div class="cld" style="background:var(--b600)"></div><span>' + SUPS[1] + ' (' + e2.length + ')</span></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.1rem;">'
+    + '<div style="background:' + (pv1 !== null && pv1 > 3 ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:10px 12px;border:.5px solid ' + (pv1 !== null && pv1 > 3 ? 'var(--r400)' : 'var(--g400)') + ';">'
+    + '<div style="font-size:10px;font-weight:600;color:var(--tx2);margin-bottom:2px;">' + SUPS[0] + '</div>'
+    + '<div style="font-size:22px;font-weight:700;color:' + (pv1 !== null && pv1 > 3 ? 'var(--r600)' : 'var(--g600)') + ';">' + (pv1 !== null ? pv1.toFixed(1) + '%' : '—') + '</div>'
+    + '<div style="font-size:11px;color:var(--tx2);">% verde acumulado</div></div>'
+    + '<div style="background:' + (pv2 !== null && pv2 > 3 ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:10px 12px;border:.5px solid ' + (pv2 !== null && pv2 > 3 ? 'var(--r400)' : 'var(--g400)') + ';">'
+    + '<div style="font-size:10px;font-weight:600;color:var(--tx2);margin-bottom:2px;">' + SUPS[1] + '</div>'
+    + '<div style="font-size:22px;font-weight:700;color:' + (pv2 !== null && pv2 > 3 ? 'var(--r600)' : 'var(--g600)') + ';">' + (pv2 !== null ? pv2.toFixed(1) + '%' : '—') + '</div>'
+    + '<div style="font-size:11px;color:var(--tx2);">% verde acumulado</div></div></div>'
+    + '<div class="stitle"><i class="ti ti-checklist"></i> Parámetros de calidad</div>';
+
+  CRITERIOS.forEach(function(c) {
+    var v1 = e1.length ? e1.reduce(function(a,e) { return a + (e.pts[c.id] || 0); }, 0) / e1.length : 0;
+    var v2 = e2.length ? e2.reduce(function(a,e) { return a + (e.pts[c.id] || 0); }, 0) / e2.length : 0;
+    h += '<div class="comp-row"><span class="clbl">' + c.n + '</span><div class="cbars">'
+      + '<div class="cbline"><div class="cbar" style="background:var(--g400);width:' + Math.round(v1/5*100) + '%"></div><span class="cval" style="color:var(--g600)">' + (v1 > 0 ? v1.toFixed(1) : '—') + '</span></div>'
+      + '<div class="cbline"><div class="cbar" style="background:var(--b600);width:' + Math.round(v2/5*100) + '%"></div><span class="cval" style="color:var(--b600)">' + (v2 > 0 ? v2.toFixed(1) : '—') + '</span></div>'
+      + '</div></div>';
+  });
+
+  h += '<div class="stitle" style="margin-top:1.1rem;"><i class="ti ti-apple"></i> % racimos por madurez</div>';
+  MAD_KEYS.forEach(function(k) {
+    var rv1 = e1.reduce(function(a,e) { return a + (e.racimos[k] || 0); }, 0);
+    var rv2 = e2.reduce(function(a,e) { return a + (e.racimos[k] || 0); }, 0);
+    var p1  = Math.round(rv1 / r1 * 100), p2 = Math.round(rv2 / r2 * 100);
+    h += '<div class="comp-row"><span class="clbl">' + MAD_LABEL[k] + '</span><div class="cbars">'
+      + '<div class="cbline"><div class="cbar" style="background:var(--g400);width:' + p1 + '%"></div><span class="cval" style="color:var(--g600)">' + (e1.length ? p1 + '%' : '—') + '</span></div>'
+      + '<div class="cbline"><div class="cbar" style="background:var(--b600);width:' + p2 + '%"></div><span class="cval" style="color:var(--b600)">' + (e2.length ? p2 + '%' : '—') + '</span></div>'
+      + '</div></div>';
+  });
+
+  h += '<div class="stitle" style="margin-top:1.1rem;"><i class="ti ti-clipboard-check"></i> Volumen</div>'
+    + '<div class="comp-row"><span class="clbl">Racimos totales</span><div class="cbars">'
+    + '<div class="cbline"><span class="cval" style="color:var(--g600)">' + (e1.length ? r1 : '—') + '</span></div>'
+    + '<div class="cbline"><span class="cval" style="color:var(--b600)">' + (e2.length ? r2 : '—') + '</span></div>'
+    + '</div></div>'
+    + '<div class="comp-row"><span class="clbl">Racimos / evaluación</span><div class="cbars">'
+    + '<div class="cbline"><span class="cval" style="color:var(--g600)">' + (e1.length ? (r1/e1.length).toFixed(1) : '—') + '</span></div>'
+    + '<div class="cbline"><span class="cval" style="color:var(--b600)">' + (e2.length ? (r2/e2.length).toFixed(1) : '—') + '</span></div>'
+    + '</div></div>';
+
+  cw.innerHTML = h;
+}
+
 function renderVGlobal() {
   var dashFecha = document.getElementById('dash-fecha');
   var hoy = dashFecha && dashFecha.value ? dashFecha.value : fechaColombiaHoy();
@@ -1900,54 +2028,7 @@ function upd() {
     sg.appendChild(card);
   });
 
-  // Comparativa
-  var cw = document.getElementById('cwrap');
-  var e1 = evals.filter(function(e) { return e.supervisor === SUPS[0]; });
-  var e2 = evals.filter(function(e) { return e.supervisor === SUPS[1]; });
-  if (!e1.length && !e2.length) {
-    cw.innerHTML = '<div class="empty"><i class="ti ti-arrows-diff"></i>Registra evaluaciones para ver la comparativa</div>';
-  } else {
-    var r1   = e1.reduce(function(a,e) { return a + e.totalRacimos; }, 0) || 1;
-    var r2   = e2.reduce(function(a,e) { return a + e.totalRacimos; }, 0) || 1;
-    var pv1  = e1.length ? Math.round(e1.reduce(function(a,e) { return a+e.racimos.verde; }, 0) / r1 * 1000) / 10 : null;
-    var pv2  = e2.length ? Math.round(e2.reduce(function(a,e) { return a+e.racimos.verde; }, 0) / r2 * 1000) / 10 : null;
-
-    var h = '<div class="cleg">'
-      + '<div class="cli"><div class="cld" style="background:var(--g400)"></div><span>' + SUPS[0] + '</span></div>'
-      + '<div class="cli"><div class="cld" style="background:var(--b600)"></div><span>' + SUPS[1] + '</span></div>'
-      + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.1rem;">'
-      + '<div style="background:' + (pv1 !== null && pv1 > 3 ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:10px 12px;border:.5px solid ' + (pv1 !== null && pv1 > 3 ? 'var(--r400)' : 'var(--g400)') + ';">'
-      + '<div style="font-size:10px;font-weight:600;color:var(--tx2);margin-bottom:2px;">' + SUPS[0] + '</div>'
-      + '<div style="font-size:22px;font-weight:700;color:' + (pv1 !== null && pv1 > 3 ? 'var(--r600)' : 'var(--g600)') + ';">' + (pv1 !== null ? pv1.toFixed(1) + '%' : '—') + '</div>'
-      + '<div style="font-size:11px;color:var(--tx2);">% verde acumulado</div></div>'
-      + '<div style="background:' + (pv2 !== null && pv2 > 3 ? 'var(--r50)' : 'var(--g50)') + ';border-radius:var(--rr);padding:10px 12px;border:.5px solid ' + (pv2 !== null && pv2 > 3 ? 'var(--r400)' : 'var(--g400)') + ';">'
-      + '<div style="font-size:10px;font-weight:600;color:var(--tx2);margin-bottom:2px;">' + SUPS[1] + '</div>'
-      + '<div style="font-size:22px;font-weight:700;color:' + (pv2 !== null && pv2 > 3 ? 'var(--r600)' : 'var(--g600)') + ';">' + (pv2 !== null ? pv2.toFixed(1) + '%' : '—') + '</div>'
-      + '<div style="font-size:11px;color:var(--tx2);">% verde acumulado</div></div></div>'
-      + '<div class="stitle"><i class="ti ti-checklist"></i> Parámetros de calidad</div>';
-
-    CRITERIOS.forEach(function(c) {
-      var v1 = e1.length ? e1.reduce(function(a,e) { return a + (e.pts[c.id] || 0); }, 0) / e1.length : 0;
-      var v2 = e2.length ? e2.reduce(function(a,e) { return a + (e.pts[c.id] || 0); }, 0) / e2.length : 0;
-      h += '<div class="comp-row"><span class="clbl">' + c.n + '</span><div class="cbars">'
-        + '<div class="cbline"><div class="cbar" style="background:var(--g400);width:' + Math.round(v1/5*100) + '%"></div><span class="cval" style="color:var(--g600)">' + (v1 > 0 ? v1.toFixed(1) : '—') + '</span></div>'
-        + '<div class="cbline"><div class="cbar" style="background:var(--b600);width:' + Math.round(v2/5*100) + '%"></div><span class="cval" style="color:var(--b600)">' + (v2 > 0 ? v2.toFixed(1) : '—') + '</span></div>'
-        + '</div></div>';
-    });
-
-    h += '<div class="stitle" style="margin-top:1.1rem;"><i class="ti ti-apple"></i> % racimos por madurez</div>';
-    MAD_KEYS.forEach(function(k) {
-      var rv1 = e1.reduce(function(a,e) { return a + (e.racimos[k] || 0); }, 0);
-      var rv2 = e2.reduce(function(a,e) { return a + (e.racimos[k] || 0); }, 0);
-      var p1  = Math.round(rv1 / r1 * 100), p2 = Math.round(rv2 / r2 * 100);
-      h += '<div class="comp-row"><span class="clbl">' + MAD_LABEL[k] + '</span><div class="cbars">'
-        + '<div class="cbline"><div class="cbar" style="background:var(--g400);width:' + p1 + '%"></div><span class="cval" style="color:var(--g600)">' + (e1.length ? p1 + '%' : '—') + '</span></div>'
-        + '<div class="cbline"><div class="cbar" style="background:var(--b600);width:' + p2 + '%"></div><span class="cval" style="color:var(--b600)">' + (e2.length ? p2 + '%' : '—') + '</span></div>'
-        + '</div></div>';
-    });
-    cw.innerHTML = h;
-  }
+  renderComparativa();
 
   // Historial — manejado por filtrarHistorial()
   if (document.getElementById('sec-historial').classList.contains('active')) {
