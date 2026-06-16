@@ -1607,7 +1607,8 @@ function calcMVPMes(mesKey) {
     porCos[cod].promSum += e.prom || 0;
     porCos[cod].n++;
   });
-  var lista = Object.values(porCos).filter(function(c) { return c.rac > 0; }).map(function(c) {
+  var MVP_MIN_EVALS = 3;
+  var lista = Object.values(porCos).filter(function(c) { return c.rac > 0 && c.n >= MVP_MIN_EVALS; }).map(function(c) {
     var pctVerde = Math.round(c.verde / c.rac * 1000) / 10;
     var calidad  = Math.round(c.promSum / c.n * 10) / 10;
     var goodVerde   = Math.max(0, 100 - pctVerde * 20);
@@ -1646,7 +1647,11 @@ function renderMVPCard() {
     + '</div>';
 
   if (!mvp) {
-    document.getElementById('mvp-card').innerHTML = nav + '<div class="mvp-empty">Sin evaluaciones registradas en ' + mesLabel + '</div>';
+    var hayEvSinMin = evals.some(function(e) { return mesKeyDe(e.fecha) === mesKey; });
+    var msg = hayEvSinMin
+      ? 'Ningún cosechero alcanza el mínimo de 3 evaluaciones en ' + mesLabel
+      : 'Sin evaluaciones registradas en ' + mesLabel;
+    document.getElementById('mvp-card').innerHTML = nav + '<div class="mvp-empty">' + msg + '</div>';
     return;
   }
 
