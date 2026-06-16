@@ -941,7 +941,7 @@ const CRITERIOS   = [
   {id:'danio',  n:'Daño mecánico / cortes', p:1.5},
   {id:'pedu',   n:'Pedúnculo largo',         p:1},
   {id:'hoja',   n:'Disposición de hoja',     p:1},
-  {id:'plato',  n:'Estado del plato',        p:1},
+  {id:'plato',  n:'Plato enmalezado',        p:1, excluirCal:true},
 ];
 
 // ══ ESTADO ═══════════════════════════════════════════════════════════════════
@@ -1357,7 +1357,7 @@ function renderCriterios() {
     for (var i = 1; i <= 5; i++) {
       btns += '<button class="pb" id="pb-' + c.id + '-' + i + '" onclick="setP(\'' + c.id + '\',' + i + ')">' + i + '</button>';
     }
-    d.innerHTML = '<span class="cnombre">' + c.n + '</span><div class="cpuntaje">' + btns + '</div>';
+    d.innerHTML = '<span class="cnombre">' + c.n + (c.excluirCal ? ' <small style="color:var(--tx3);font-weight:400;">(referencia, no afecta calificación)</small>' : '') + '</span><div class="cpuntaje">' + btns + '</div>';
     g.appendChild(d);
   });
 }
@@ -1372,7 +1372,7 @@ function setP(id, v) {
 
 function calcP(pm) {
   var t = 0, w = 0;
-  CRITERIOS.forEach(function(c) { if (pm[c.id]) { t += pm[c.id] * c.p; w += c.p; } });
+  CRITERIOS.forEach(function(c) { if (c.excluirCal) return; if (pm[c.id]) { t += pm[c.id] * c.p; w += c.p; } });
   return w > 0 ? t / w : 0;
 }
 
