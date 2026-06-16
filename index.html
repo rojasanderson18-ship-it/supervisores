@@ -2421,7 +2421,7 @@ function generarReporte() {
   // Filtrar evaluaciones
   var evFiltradas = evals.filter(function(e) {
     var supOk = supIdx === '' || e.supIdx === parseInt(supIdx);
-    var cosOk = !cosechCod || e.cosechCod === cosechCod;
+    var cosOk = !cosechCod || (e.cosechCod || '').split(',').map(function(s) { return s.trim(); }).indexOf(cosechCod) !== -1;
     var fechaOk;
     if (periodo === 'dia') {
       fechaOk = e.fecha === fecha;
