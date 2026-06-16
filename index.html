@@ -2119,7 +2119,7 @@ function cargarDesdeGAS() {
             racimos: { maduro: parseFloat(r['Racimos Maduros'])||0, sobremaduro: parseFloat(r['Racimos Sobremaduro'])||0, verde: parseFloat(r['Racimos Verdes'])||0, podrido: parseFloat(r['Racimos Podridos'])||0, dejados: parseFloat(r['Racimos Dejados'])||0 },
             totalRacimos: parseFloat(r['Total Racimos'])||0, pctVerde: parseFloat(r['% Verde'])||0,
             cal: { nota: r['Calificación Nota'], label: r['Calificación Label'], cls: r['Calificación Nota']==='A'?'tag-ok':r['Calificación Nota']==='B'?'tag-warn':'tag-bad' },
-            pts: { suelto: parseFloat(r['Fruto Suelto'])||0, danio: parseFloat(r['Daño Mecánico'])||0, pedu: parseFloat(r['Pedúnculo Largo'])||0, hoja: parseFloat(r['Disposición Hoja'])||0, plato: parseFloat(r['Estado del Plato'])||0 },
+            pts: { suelto: parseFloat(r['Fruto Suelto'])||0, danio: parseFloat(r['Daño Mecánico'])||0, pedu: parseFloat(r['Pedúnculo Largo'])||0, hoja: parseFloat(r['Disposición Hoja'])||0, plato: parseFloat(r['Plato Enmalezado'])||0 },
             prom: parseFloat(r['Prom Parámetros'])||0, obs: r['Observaciones']||''
           };
         });
