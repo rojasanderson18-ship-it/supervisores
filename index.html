@@ -1577,6 +1577,17 @@ var mvpMesOffset = 0;
 
 function mesKeyDe(fecha) { return fecha ? String(fecha).substring(0,7) : ''; }
 
+function parseFechaLocal(fechaStr) {
+  var p = String(fechaStr).split('-').map(Number);
+  return new Date(p[0], p[1] - 1, p[2]);
+}
+
+function sumarDiasStr(fStr, delta) {
+  var d = parseFechaLocal(fStr);
+  d.setDate(d.getDate() + delta);
+  return fechaStr(d);
+}
+
 function mesesConDatos() {
   var set = {};
   evals.forEach(function(e) { var k = mesKeyDe(e.fecha); if (k) set[k] = true; });
@@ -1681,17 +1692,14 @@ function renderVGlobal() {
 
   var actual, anterior, subTxt;
   if (vGlobalPeriodo === 'dia') {
-    var d = new Date(hoy); var ayer = new Date(d); ayer.setDate(d.getDate()-1);
-    var ayerStr = fechaStr(ayer);
+    var ayerStr = sumarDiasStr(hoy, -1);
     actual   = sumarVerde(evals.filter(function(e) { return e.fecha === hoy; }));
     anterior = sumarVerde(evals.filter(function(e) { return e.fecha === ayerStr; }));
     subTxt   = 'límite 3% · vs. ayer';
   } else if (vGlobalPeriodo === 'semana') {
     var sf = inicioFinSemana(hoy);
     actual = sumarVerde(evals.filter(function(e) { return e.fecha >= sf.inicio && e.fecha <= sf.fin; }));
-    var dIni = new Date(sf.inicio); var prevIni = new Date(dIni); prevIni.setDate(dIni.getDate()-7);
-    var prevFin = new Date(prevIni); prevFin.setDate(prevIni.getDate()+6);
-    var prevIniStr = fechaStr(prevIni), prevFinStr = fechaStr(prevFin);
+    var prevIniStr = sumarDiasStr(sf.inicio, -7), prevFinStr = sumarDiasStr(sf.fin, -7);
     anterior = sumarVerde(evals.filter(function(e) { return e.fecha >= prevIniStr && e.fecha <= prevFinStr; }));
     subTxt = 'límite 3% · vs. semana anterior';
   } else {
@@ -1796,7 +1804,7 @@ function renderStackMeses() {
     return '<div class="stack-row">'
       + '<div class="stack-mes">' + mesLbl + '</div>'
       + '<div class="stack-bar">' + segs + '</div>'
-      + '<div class="stack-val">' + totalRacimos + '</div>'
+      + '<div class="stack-val">' + totalRacimos + (sums.dejados > 0 ? '<br><span style="color:#5B2D9E;">+' + sums.dejados + ' dej.</span>' : '') + '</div>'
       + '</div>';
   }).join('');
   box.innerHTML = html;
@@ -2256,51 +2264,6 @@ function sincPersonalGAS() {
 
 // ══ REPORTES ═════════════════════════════════════════════════════════════════
 
-function rpOnSupChange() {
-  var idx = document.getElementById('rp-sup').value;
-  var sel = document.getElementById('rp-cosech');
-  if (idx === '') { sel.innerHTML = '<option value="">— elige supervisor —</option>'; sel.disabled = true; return; }
-  sel.disabled = false;
-  var activos = personal.filter(function(p) { return p.supIdx === parseInt(idx); });
-  sel.innerHTML = '<option value="">Todos los cosecheros</option>';
-  activos.forEach(function(p) {
-    var o = document.createElement('option');
-    o.value = p.cod; o.textContent = p.cod + ' — ' + p.nombre;
-    sel.appendChild(o);
-  });
-}
-
-function rpOnPeriodoChange() {
-  var periodo = document.getElementById('rp-periodo').value;
-  var wrap    = document.getElementById('rp-fecha-wrap');
-  var lbl     = document.getElementById('rp-fecha-lbl');
-  if (!periodo) { wrap.style.display = 'none'; return; }
-  wrap.style.display = 'flex';
-  lbl.textContent = periodo === 'dia' ? 'Fecha' : 'Cualquier fecha de la semana';
-  document.getElementById('rp-fecha').value = fechaColombiaHoy();
-}
-
-function semanaDeEval(fechaStr) {
-  var d = new Date(fechaStr);
-  if (isNaN(d)) return null;
-  var thu = new Date(d);
-  thu.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 3);
-  var year = thu.getFullYear();
-  var week = Math.ceil(((thu - new Date(year, 0, 4)) / 864e5 + 1) / 7);
-  return year + '-S' + String(week).padStart(2, '0');
-}
-
-function inicioFinSemana(fechaStr) {
-  var d = new Date(fechaStr);
-  var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-  var fmt = function(x) { return fechaStr(x); };
-  return { inicio: fmt(lunes), fin: fmt(domingo) };
-}
-
-
-
-
 
 function rpOnSupChange() {
   var idx = document.getElementById('rp-sup').value;
@@ -2326,8 +2289,8 @@ function rpOnPeriodoChange() {
   document.getElementById('rp-fecha').value = fechaColombiaHoy();
 }
 
-function semanaDeEval(fechaStr) {
-  var d = new Date(fechaStr);
+function semanaDeEval(fStr) {
+  var d = parseFechaLocal(fStr);
   if (isNaN(d)) return null;
   var thu = new Date(d);
   thu.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 3);
@@ -2336,12 +2299,11 @@ function semanaDeEval(fechaStr) {
   return year + '-S' + String(week).padStart(2, '0');
 }
 
-function inicioFinSemana(fechaStr) {
-  var d = new Date(fechaStr);
+function inicioFinSemana(fStr) {
+  var d = parseFechaLocal(fStr);
   var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-  var fmt = function(x) { return fechaStr(x); };
-  return { inicio: fmt(lunes), fin: fmt(domingo) };
+  return { inicio: fechaStr(lunes), fin: fechaStr(domingo) };
 }
 
 function generarReporte() {
