@@ -517,7 +517,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="crit-grid"></div>
     </div>
 
-    <!-- 5. Observaciones + Guardar -->
+    <!-- 5. Firma digital (opcional) -->
+    <div class="stitle"><i class="ti ti-signature"></i> Firma del cosechero <span style="font-size:10px;font-weight:400;color:var(--tx3);text-transform:none;">(opcional)</span></div>
+    <div class="firma-wrap" id="firma-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span id="firma-status" style="font-size:12px;color:var(--tx2);display:flex;align-items:center;gap:5px;">
+          <i class="ti ti-pencil"></i> Dibuja la firma arriba
+        </span>
+        <div class="firma-btns">
+          <button type="button" onclick="limpiarFirma()" style="padding:5px 12px;background:var(--bg2);border:.5px solid var(--bd2);border-radius:var(--rr);font-size:12px;color:var(--tx2);cursor:pointer;">
+            <i class="ti ti-trash" style="font-size:12px;vertical-align:-1px"></i> Borrar
+          </button>
+        </div>
+      </div>
+      <canvas id="firma-canvas" class="firma-canvas" width="600" height="160"></canvas>
+    </div>
+
+    <!-- 6. Observaciones + Guardar -->
     <div class="stitle"><i class="ti ti-note"></i> Observaciones</div>
     <textarea class="obs" id="inp-obs" placeholder="Novedades, incidencias o recomendaciones..."></textarea>
     <div class="error-banner" id="error-banner"><i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><span id="error-msg"></span></div>
@@ -629,9 +645,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
         <span id="hist-count" style="font-size:12px;color:var(--tx2);">— evaluaciones</span>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button onclick="limpiarFiltrosHistorial()" style="padding:6px 12px;background:var(--bg2);border:.5px solid var(--bd2);border-radius:var(--rr);font-size:12px;color:var(--tx2);cursor:pointer;">
             <i class="ti ti-x" style="font-size:12px;vertical-align:-1px"></i> Limpiar
+          </button>
+          <button onclick="diagnosticarSync()" style="padding:6px 12px;background:var(--b50);border:.5px solid var(--b600);border-radius:var(--rr);font-size:12px;color:var(--b600);cursor:pointer;display:flex;align-items:center;gap:4px;">
+            <i class="ti ti-stethoscope"></i> Diagnóstico
           </button>
           <button onclick="exportarHistorialPDF()" style="padding:6px 12px;background:var(--r600);color:#fff;border:none;border-radius:var(--rr);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;">
             <i class="ti ti-file-type-pdf"></i> PDF
@@ -752,7 +771,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div id="tend-empty" class="empty" style="display:none;">
       <i class="ti ti-chart-line" style="font-size:26px;display:block;margin-bottom:8px;"></i>
-      Cargando datos de tendencias...
+      Sin evaluaciones registradas aún.<br><span style="font-size:11px;margin-top:4px;display:block;">Las tendencias aparecen cuando hay evaluaciones en el Sheet.</span>
     </div>
   </div>
 
@@ -797,6 +816,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="display:flex;gap:8px;margin-top:10px;">
           <button onclick="cargarMapa()" style="flex:1;padding:8px;background:var(--g50);border:.5px solid var(--g400);border-radius:var(--rr);font-size:12px;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
             <i class="ti ti-refresh"></i> Actualizar
+          </button>
+          <button onclick="centrarEnMiUbicacion()" style="flex:1;padding:8px;background:var(--b50);border:.5px solid var(--b600);border-radius:var(--rr);font-size:12px;color:var(--b600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+            <i class="ti ti-current-location"></i> Mi ubicación
           </button>
           <button onclick="exportarKML()" style="flex:1;padding:8px;background:#1a6d3e;color:#fff;border:none;border-radius:var(--rr);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
             <i class="ti ti-brand-google-maps"></i> Exportar KML
@@ -928,7 +950,7 @@ var pts   = {};
 
 // ══ INIT ═════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function() {
-  var hoyInit = new Date().toISOString().split('T')[0];
+  var hoyInit = fechaColombiaHoy();
   document.getElementById('inp-fecha').value = hoyInit;
   if (document.getElementById('dash-fecha')) document.getElementById('dash-fecha').value = hoyInit;
   renderCriterios();
@@ -1531,7 +1553,7 @@ function guardar() {
 
 // ══ PROGRESO DIARIO ══════════════════════════════════════════════════════════
 function renderProgSup() {
-  var hoy  = document.getElementById('inp-fecha').value || new Date().toISOString().split('T')[0];
+  var hoy  = document.getElementById('inp-fecha').value || fechaColombiaHoy();
   var html = '';
   SUPS.forEach(function(sup) {
     var cnt  = evals.filter(function(e) { return e.supervisor === sup && e.fecha === hoy; }).length;
@@ -1782,7 +1804,7 @@ function renderStackMeses() {
 
 function upd() {
   var dashFecha = document.getElementById('dash-fecha');
-  var hoy = dashFecha && dashFecha.value ? dashFecha.value : new Date().toISOString().split('T')[0];
+  var hoy = dashFecha && dashFecha.value ? dashFecha.value : fechaColombiaHoy();
   var evHoy  = evals.filter(function(e) { return e.fecha === hoy; });
 
   document.getElementById('m-hoy').textContent = evHoy.length;
@@ -2064,11 +2086,21 @@ function cargarDesdeGAS() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok && data.data.length > 0) {
+        var normFecha = function(f) {
+          if (!f) return '';
+          var s = String(f).trim();
+          // ISO: "2026-06-13T..." → "2026-06-13"
+          if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+          // DD/MM/YYYY → "2026-06-13"
+          var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+          return s.length >= 10 ? s.substring(0, 10) : s;
+        };
         evals = data.data.map(function(r) {
           return {
             supervisor: r['Supervisor'], supIdx: SUPS.indexOf(r['Supervisor']),
             cosechero: r['Cosechero'], cosechCod: r['Código'],
-            lote: r['Frente/Lote'], palma: r['Tipo Palma'], fecha: (function(f){ if(!f) return ''; var s = String(f).trim(); return s.length >= 10 ? s.substring(0,10) : s; })(r['Fecha']),
+            lote: r['Frente/Lote'], palma: r['Tipo Palma'], fecha: normFecha(r['Fecha']),
             diasCiclo: parseFloat(r['Días Ciclo'])||0, maxCiclo: CICLO_MAX[r['Tipo Palma']]||0,
             fueraCiclo: r['Fuera Ciclo']==='SÍ',
             racimos: { maduro: parseFloat(r['Racimos Maduros'])||0, sobremaduro: parseFloat(r['Racimos Sobremaduro'])||0, verde: parseFloat(r['Racimos Verdes'])||0, podrido: parseFloat(r['Racimos Podridos'])||0, dejados: parseFloat(r['Racimos Dejados'])||0 },
@@ -2245,7 +2277,7 @@ function rpOnPeriodoChange() {
   if (!periodo) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   lbl.textContent = periodo === 'dia' ? 'Fecha' : 'Cualquier fecha de la semana';
-  document.getElementById('rp-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rp-fecha').value = fechaColombiaHoy();
 }
 
 function semanaDeEval(fechaStr) {
@@ -2262,85 +2294,11 @@ function inicioFinSemana(fechaStr) {
   var d = new Date(fechaStr);
   var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-  var fmt = function(x) { return x.toISOString().split('T')[0]; };
+  var fmt = function(x) { return fechaStr(x); };
   return { inicio: fmt(lunes), fin: fmt(domingo) };
 }
 
 
-
-
-
-function compartirReporte() {
-  if (navigator.share) {
-    var texto = document.getElementById('rp-contenido').innerText;
-    var cosechEl = document.getElementById('rp-cosech');
-    var nombre = cosechEl && cosechEl.value
-      ? cosechEl.options[cosechEl.selectedIndex].text.split('—')[1].trim()
-      : 'Grupo';
-    navigator.share({
-      title: 'Reporte Cosecha — ' + nombre,
-      text: ' Reporte de calidad cosecha\nPalma Grande S.A.S\n\n' + texto
-    }).catch(function() {});
-  } else {
-    window.print();
-  }
-}
-
-// ══ HISTORIAL FILTRADO ═══════════════════════════════════════════════════════
-var evalsFiltradas = [];
-
-function initHistorial() {
-  var hoy = fechaColombiaHoy();
-  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
-  document.getElementById('hist-hasta').value = hoy;
-  if (evals.length === 0) {
-    cargarDesdeGAS().then(function() { filtrarHistorial(); });
-  } else {
-    filtrarHistorial();
-  }
-}
-
-
-function limpiarFiltrosHistorial() {
-  document.getElementById('hist-sup').value = '';
-  document.getElementById('hist-cal').value = '';
-  var hoy = fechaColombiaHoy();
-  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
-  document.getElementById('hist-hasta').value = hoy;
-  filtrarHistorial();
-}
-
-function renderHistorialFiltrado() {
-  var hb = document.getElementById('hbody');
-  var count = document.getElementById('hist-count');
-  count.textContent = evalsFiltradas.length + ' evaluación' + (evalsFiltradas.length !== 1 ? 'es' : '');
-
-  if (!evalsFiltradas.length) {
-    hb.innerHTML = '<div class="empty">Sin evaluaciones para los filtros seleccionados</div>';
-    return;
-  }
-
-  var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
-  hb.innerHTML = evalsFiltradas.slice().reverse().map(function(e) {
-    var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
-      .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
-    var cicloTag = e.fueraCiclo
-      ? '<span class="tag tag-bad"> +' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
-      : '<span class="tag tag-ok">' + e.diasCiclo + 'd </span>';
-    var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
-    return '<div class="hrow">'
-      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
-      + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
-      + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma||'') + '<br>' + cicloTag + '</span>'
-      + '<span><div class="mini-pills">' + pills + '</div></span>'
-      + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
-      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
-      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
-      + '</div>';
-  }).join('');
-}
 
 
 
@@ -2365,7 +2323,7 @@ function rpOnPeriodoChange() {
   if (!periodo) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   lbl.textContent = periodo === 'dia' ? 'Fecha' : 'Cualquier fecha de la semana';
-  document.getElementById('rp-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('rp-fecha').value = fechaColombiaHoy();
 }
 
 function semanaDeEval(fechaStr) {
@@ -2382,7 +2340,7 @@ function inicioFinSemana(fechaStr) {
   var d = new Date(fechaStr);
   var lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
-  var fmt = function(x) { return x.toISOString().split('T')[0]; };
+  var fmt = function(x) { return fechaStr(x); };
   return { inicio: fmt(lunes), fin: fmt(domingo) };
 }
 
@@ -2661,13 +2619,12 @@ var evalsFiltradas = [];
 function initHistorial() {
   var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
-  if (evals.length === 0) {
-    cargarDesdeGAS().then(function() { filtrarHistorial(); });
-  } else {
-    filtrarHistorial();
-  }
+  // Mostrar lo que hay en local mientras carga GAS
+  filtrarHistorial();
+  // Siempre recargar desde GAS para tener datos frescos
+  cargarDesdeGAS().then(function() { filtrarHistorial(); });
 }
 
 function filtrarHistorial() {
@@ -2676,14 +2633,65 @@ function filtrarHistorial() {
   var sup   = document.getElementById('hist-sup').value;
   var cal   = document.getElementById('hist-cal').value;
 
-  evalsFiltradas = evals.filter(function(e) {
+  // Incluir evaluaciones del Sheet + las pendientes en cola local
+  var idsSinc = new Set(evals.map(function(e) { return e.id; }));
+  var colaItems = leerCola().filter(function(c) { return !idsSinc.has(c.id); });
+  var todos = evals.concat(colaItems);
+
+  evalsFiltradas = todos.filter(function(e) {
     var fechaOk = (!desde || e.fecha >= desde) && (!hasta || e.fecha <= hasta);
     var supOk   = !sup || e.supervisor === sup;
-    var calOk   = !cal || e.cal.nota === cal;
+    var calOk   = !cal || (e.cal && e.cal.nota === cal);
     return fechaOk && supOk && calOk;
   });
 
   renderHistorialFiltrado();
+}
+
+function diagnosticarSync() {
+  var cola = leerCola();
+  var msg = '📋 DIAGNÓSTICO DE SINCRONIZACIÓN\n\n';
+  msg += '• Registros en cola local: ' + cola.length + '\n';
+  msg += '• Registros en Sheet (cargados): ' + evals.length + '\n\n';
+  if (!navigator.onLine) { alert(msg + '❌ Sin conexión a internet.'); return; }
+  msg += '• Conexión a internet: OK\n';
+  msg += '• Probando conexión con Sheet...\n\nEspere...';
+  // Mensaje inicial
+  var dlg = document.createElement('div');
+  dlg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg);border:.5px solid var(--bd2);border-radius:var(--rrl);padding:1.5rem;z-index:9999;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+  dlg.innerHTML = '<div style="font-size:13px;white-space:pre-wrap;line-height:1.6;" id="diag-msg">' + msg + '</div>'
+    + '<button onclick="this.parentNode.remove()" style="margin-top:12px;width:100%;padding:8px;background:var(--g600);color:#fff;border:none;border-radius:var(--rr);font-size:13px;cursor:pointer;">Cerrar</button>';
+  document.body.appendChild(dlg);
+
+  fetch(GAS_URL + '?action=listar')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var result = '📋 DIAGNÓSTICO DE SINCRONIZACIÓN\n\n';
+      result += '• Registros en cola local: ' + cola.length + '\n';
+      result += '• Registros en Sheet: ' + evals.length + '\n';
+      result += '• Internet: OK\n';
+      result += '• Sheet responde: ' + (d.ok ? '✅ OK' : '❌ Error: ' + JSON.stringify(d)) + '\n';
+      result += '• Total registros en Sheet: ' + (d.data ? d.data.length : 0) + '\n\n';
+      if (cola.length > 0) {
+        result += '⚠️ Hay ' + cola.length + ' evaluación(es) en cola.\nIntentando enviar...\n';
+        sincronizarCola();
+        result += 'Intento de sync iniciado. Si hay señal, llegarán al Sheet en segundos.';
+      } else {
+        result += '✅ Cola vacía — todo sincronizado.';
+      }
+      var el = document.getElementById('diag-msg');
+      if (el) el.textContent = result;
+    })
+    .catch(function(e) {
+      var result = '📋 DIAGNÓSTICO DE SINCRONIZACIÓN\n\n';
+      result += '• Registros en cola local: ' + cola.length + '\n';
+      result += '• Internet: parece activo\n';
+      result += '• Sheet: ❌ Error de conexión\n';
+      result += '  Detalle: ' + (e.message || e) + '\n\n';
+      result += 'Posibles causas:\n- El Script no está publicado como "Cualquiera"\n- La URL del Script cambió\n- Error en el código del Script';
+      var el = document.getElementById('diag-msg');
+      if (el) el.textContent = result;
+    });
 }
 
 function limpiarFiltrosHistorial() {
@@ -2691,7 +2699,7 @@ function limpiarFiltrosHistorial() {
   document.getElementById('hist-cal').value = '';
   var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
   filtrarHistorial();
 }
@@ -2702,11 +2710,17 @@ function renderHistorialFiltrado() {
   count.textContent = evalsFiltradas.length + ' evaluación' + (evalsFiltradas.length !== 1 ? 'es' : '');
 
   if (!evalsFiltradas.length) {
-    hb.innerHTML = '<div class="empty">Sin evaluaciones para los filtros seleccionados</div>';
+    var totalSheet = evals.length;
+    var totalCola  = leerCola().length;
+    var info = totalSheet + ' en Sheet, ' + totalCola + ' pendientes locales';
+    hb.innerHTML = '<div class="empty"><i class="ti ti-list-search" style="font-size:24px;display:block;margin-bottom:8px;"></i>'
+      + 'Sin evaluaciones para los filtros seleccionados<br>'
+      + '<span style="font-size:10px;margin-top:6px;display:block;color:var(--tx3);">(' + info + ')</span></div>';
     return;
   }
 
   var palmaNombre = {guineensis:'Guineensis', hibrido:'Híbrido'};
+  var idsSincHist = new Set(evals.map(function(e) { return e.id; }));
   hb.innerHTML = evalsFiltradas.slice().reverse().map(function(e) {
     var pills = MAD_KEYS.filter(function(k) { return e.racimos[k] > 0; })
       .map(function(k) { return '<span class="mini-pill ' + MAD_CLS[k] + '">' + e.racimos[k] + ' ' + MAD_LABEL[k] + '</span>'; }).join('');
@@ -2715,14 +2729,15 @@ function renderHistorialFiltrado() {
       ? '<span class="tag tag-bad"> +' + (e.diasCiclo - e.maxCiclo) + 'd</span>'
       : '<span class="tag tag-ok">' + e.diasCiclo + 'd </span>';
     var vCol = e.pctVerde > VERDE_LIMITE ? 'var(--r600)' : 'var(--g600)';
+    var pendTag = (e.id && !idsSincHist.has(e.id)) ? '<span class="tag" style="background:var(--a50);color:var(--a600);margin-left:4px;font-size:9px;">⏳</span>' : '';
     return '<div class="hrow">'
-      + '<span style="font-weight:500">' + e.cosechero + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
+      + '<span style="font-weight:500">' + e.cosechero + pendTag + '<br><span style="font-size:10px;color:var(--tx3)">' + e.cosechCod + '</span></span>'
       + '<span style="color:var(--tx2);font-size:11px">' + e.supervisor + '</span>'
       + '<span style="font-size:11px">' + e.lote + '<br>' + (palmaNombre[e.palma]||e.palma||'') + '<br>' + cicloTag + '</span>'
       + '<span><div class="mini-pills">' + pills + '</div></span>'
       + '<span style="font-weight:700">' + e.totalRacimos + '</span>'
-      + '<span style="font-weight:700;color:' + vCol + '">' + e.pctVerde.toFixed(1) + '%</span>'
-      + '<span><span class="tag ' + e.cal.cls + '">' + e.cal.nota + ' — ' + e.cal.label + '</span></span>'
+      + '<span style="font-weight:700;color:' + vCol + '">' + (e.pctVerde||0).toFixed(1) + '%</span>'
+      + '<span><span class="tag ' + (e.cal&&e.cal.cls||'tag-ok') + '">' + (e.cal&&e.cal.nota||'?') + ' — ' + (e.cal&&e.cal.label||'') + '</span></span>'
       + '</div>';
   }).join('');
 }
@@ -2785,17 +2800,75 @@ function setTendVista(v, btn) {
   renderTendencias();
 }
 
+function buildTendenciasLocal() {
+  // Construir tendencias desde evals en memoria (no requiere GAS)
+  if (!evals.length) return null;
+  var semSet = {};
+  var cosMap = {};
+  var supMap = {};
+  evals.forEach(function(e) {
+    if (!e.fecha) return;
+    var sem = semanaDeEval(e.fecha);
+    if (!sem) return;
+    semSet[sem] = true;
+    var cod = e.cosechCod || e.cosechero;
+    if (!cosMap[cod]) cosMap[cod] = { nombre: e.cosechero, supervisor: e.supervisor, semMap: {} };
+    if (!cosMap[cod].semMap[sem]) cosMap[cod].semMap[sem] = { vals: [], proms: [] };
+    cosMap[cod].semMap[sem].vals.push(e.pctVerde);
+    cosMap[cod].semMap[sem].proms.push(e.prom || 0);
+    if (!supMap[e.supervisor]) supMap[e.supervisor] = { semMap: {} };
+    if (!supMap[e.supervisor].semMap[sem]) supMap[e.supervisor].semMap[sem] = [];
+    supMap[e.supervisor].semMap[sem].push(e.pctVerde);
+  });
+  var semanas = Object.keys(semSet).sort();
+  // Normalizar a arrays indexados por semana
+  Object.keys(cosMap).forEach(function(cod) {
+    var c = cosMap[cod];
+    c.semanas = semanas.map(function(s) {
+      var d = c.semMap[s];
+      if (!d || !d.vals.length) return null;
+      return Math.round(d.vals.reduce(function(a,v){return a+v;},0)/d.vals.length * 10)/10;
+    });
+    c.proms = semanas.map(function(s) {
+      var d = c.semMap[s];
+      if (!d || !d.proms.length) return null;
+      return Math.round(d.proms.reduce(function(a,v){return a+v;},0)/d.proms.length * 10)/10;
+    });
+  });
+  Object.keys(supMap).forEach(function(sup) {
+    var s = supMap[sup];
+    s.semanas = semanas.map(function(sem) {
+      var vals = s.semMap[sem];
+      if (!vals || !vals.length) return null;
+      return Math.round(vals.reduce(function(a,v){return a+v;},0)/vals.length * 10)/10;
+    });
+  });
+  return { semanas: semanas, cosecheros: cosMap, supervisores: supMap };
+}
+
 function cargarTendencias() {
-  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') { renderTendencias(); return; }
   var btn = document.querySelector('#sec-tendencias button[onclick="cargarTendencias()"]');
+  // Mostrar datos locales de inmediato
+  if (evals.length > 0) { tendData = buildTendenciasLocal(); renderTendencias(); }
+  if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return;
   if (btn) { btn.innerHTML = '<i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i>'; btn.disabled = true; }
-  fetch(GAS_URL + '?action=getTendencias')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (d.ok) { tendData = d.data; renderTendencias(); }
-      if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; }
-    })
-    .catch(function(){ if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; } });
+  // Intentar cargar datos más completos del GAS
+  var promEvals = evals.length === 0 ? cargarDesdeGAS() : Promise.resolve();
+  promEvals.then(function() {
+    fetch(GAS_URL + '?action=getTendencias')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.ok && d.data) { tendData = d.data; }
+        else { tendData = buildTendenciasLocal(); }
+        renderTendencias();
+        if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; }
+      })
+      .catch(function(){
+        tendData = buildTendenciasLocal();
+        renderTendencias();
+        if (btn) { btn.innerHTML = '<i class="ti ti-refresh"></i> Actualizar'; btn.disabled = false; }
+      });
+  });
 }
 
 function calNum(pct) {
@@ -3100,17 +3173,77 @@ function iniciarMapa() {
     // Forzar reflow antes de que Leaflet lea las dimensiones
     var el = document.getElementById('mapa-container');
     void el.offsetWidth;
-    // Palma Grande — Colombia
-    mapaMap = L.map('mapa-container', { zoomControl: true }).setView([7.5, -73.5], 13);
+    // Palma Grande — Puerto Concordia, Meta
+    mapaMap = L.map('mapa-container', { zoomControl: true }).setView([2.62, -72.77], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(mapaMap);
     setTimeout(function() { mapaMap.invalidateSize(); }, 300);
     cargarMapa();
+    // Mostrar ubicación actual solo si la fecha seleccionada es hoy
+    setTimeout(function() {
+      var fecha = document.getElementById('mapa-fecha').value;
+      if (fecha === fechaColombiaHoy()) mostrarUbicacionActual();
+    }, 500);
   }
 
   requestAnimationFrame(function() { setTimeout(intentarInit, 50); });
+}
+
+var miUbicacionMarker = null;
+var miUbicacionCircle = null;
+
+function mostrarUbicacionActual() {
+  if (!mapaMap || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var acc = pos.coords.accuracy;
+      actualizarMiUbicacion(lat, lng, acc);
+    },
+    function() {},
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+  );
+}
+
+function actualizarMiUbicacion(lat, lng, acc) {
+  if (!mapaMap) return;
+  // Quitar marcador anterior
+  if (miUbicacionMarker) { mapaMap.removeLayer(miUbicacionMarker); miUbicacionMarker = null; }
+  if (miUbicacionCircle) { mapaMap.removeLayer(miUbicacionCircle); miUbicacionCircle = null; }
+
+  // Círculo de precisión
+  miUbicacionCircle = L.circle([lat, lng], {
+    radius: acc,
+    color: '#185FA5', fillColor: '#185FA5', fillOpacity: 0.08, weight: 1
+  }).addTo(mapaMap);
+
+  // Punto pulsante "yo estoy aquí"
+  var iconYo = L.divIcon({
+    className: '',
+    html: '<div style="width:16px;height:16px;border-radius:50%;background:#185FA5;border:3px solid #fff;box-shadow:0 0 0 3px rgba(24,95,165,0.35);"></div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+  miUbicacionMarker = L.marker([lat, lng], { icon: iconYo, zIndexOffset: 1000 })
+    .addTo(mapaMap)
+    .bindPopup('<div style="font-size:12px;font-weight:600;color:#185FA5;">📍 Tú estás aquí<br><span style="font-weight:400;color:#666;">Precisión: ±' + Math.round(acc) + 'm</span></div>');
+}
+
+function centrarEnMiUbicacion() {
+  if (!mapaMap || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      actualizarMiUbicacion(lat, lng, pos.coords.accuracy);
+      mapaMap.setView([lat, lng], 16);
+    },
+    function() { alert('No se pudo obtener la ubicación. Verifica que el GPS esté activado.'); },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
 }
 
 function cargarMapa() {
@@ -3136,12 +3269,22 @@ function cargarMapa() {
 }
 
 function renderMapa(fecha, supFilt) {
+  var esHoy = fecha === fechaColombiaHoy();
+
   // Limpiar capas anteriores
+  // Si es fecha histórica, también quitar la ubicación actual
   mapaMap.eachLayer(function(layer) {
-    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+    if (esHoy && (layer === miUbicacionMarker || layer === miUbicacionCircle)) return;
+    if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.Circle) {
       mapaMap.removeLayer(layer);
     }
   });
+
+  // Si es fecha histórica, limpiar las referencias del marcador de ubicación
+  if (!esHoy) {
+    miUbicacionMarker = null;
+    miUbicacionCircle = null;
+  }
 
   // Filtrar evaluaciones del día con ubicación
   var evsFecha = evals.filter(function(e) {
@@ -3151,12 +3294,22 @@ function renderMapa(fecha, supFilt) {
 
   var metrics = document.getElementById('mapa-metrics');
   var puntos  = document.getElementById('mapa-puntos');
-  // Ruta viene del Sheet (ya cargada en rutaData)
-  var trackPts = (rutaData || []).filter(function(p) {
-    var fechaOk = p.fecha === fecha;
-    var supOk   = supFilt === 'todos' || p.sup === supFilt;
-    return fechaOk && supOk;
-  }).sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
+
+  // Combinar puntos del Sheet + pendientes en localStorage (por si aún no se enviaron)
+  var ptsSheet = (rutaData || []).filter(function(p) {
+    return p.fecha === fecha && (supFilt === 'todos' || p.sup === supFilt);
+  });
+  var ptsLocal = [];
+  try {
+    var tsEnSheetSet = new Set(ptsSheet.map(function(p){ return p.ts; }));
+    ptsLocal = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]').filter(function(p) {
+      return p.fecha === fecha
+        && (supFilt === 'todos' || p.sup === supFilt)
+        && !tsEnSheetSet.has(p.ts);
+    });
+  } catch(e) {}
+  var trackPts = ptsSheet.concat(ptsLocal)
+    .sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
 
   if (evsFecha.length === 0 && trackPts.length === 0) {
     metrics.innerHTML = '<div class="mcard" style="grid-column:span 4;text-align:center;"><div class="empty" style="padding:.5rem;"><i class="ti ti-map-off" style="display:block;font-size:20px;margin-bottom:4px;"></i>Sin datos de ubicación para esta fecha</div></div>';
@@ -3224,13 +3377,34 @@ function renderMapa(fecha, supFilt) {
   var porSupTrack = {};
   trackPts.forEach(function(p) {
     if (!porSupTrack[p.sup]) porSupTrack[p.sup] = [];
-    porSupTrack[p.sup].push([p.lat, p.lng]);
+    porSupTrack[p.sup].push(p);
   });
   Object.keys(porSupTrack).forEach(function(sup) {
-    var col = supColors[sup] || '#639922';
-    L.polyline(porSupTrack[sup], {color:col, weight:2, opacity:.5}).addTo(mapaMap);
-    trackPts.filter(function(p){return p.sup===sup;}).forEach(function(p) {
+    var col  = supColors[sup] || '#639922';
+    var pts  = porSupTrack[sup];
+    var coords = pts.map(function(p){ return [p.lat, p.lng]; });
+
+    // Línea del recorrido
+    if (coords.length > 1) {
+      L.polyline(coords, { color: col, weight: 3, opacity: 0.7 }).addTo(mapaMap);
+    }
+
+    // Punto visible por cada registro GPS
+    pts.forEach(function(p) {
       bounds.push([p.lat, p.lng]);
+      L.circleMarker([p.lat, p.lng], {
+        radius: 6,
+        color: '#fff',
+        weight: 2,
+        fillColor: col,
+        fillOpacity: 1
+      }).addTo(mapaMap)
+        .bindPopup(
+          '<div style="font-size:12px;">'
+          + '<b style="color:' + col + ';">' + (p.sup || 'Supervisor') + '</b><br>'
+          + '<span style="color:#666;">' + (p.hora || '') + ' · ±' + (p.acc || '?') + 'm</span>'
+          + '</div>'
+        );
     });
   });
 
@@ -3267,15 +3441,17 @@ var ultimoPunto    = 0;      // timestamp del último punto guardado (ms)
 var rutaData       = null;   // Puntos de ruta cargados del Sheet
 
 function fechaColombiaHoy() {
-  return new Date().toLocaleDateString('es-CO', {
-    timeZone: 'America/Bogota',
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).split('/').reverse().join('-');
+  // toLocaleDateString('sv') da YYYY-MM-DD usando la fecha local del dispositivo
+  return new Date().toLocaleDateString('sv');
+}
+
+function fechaStr(d) {
+  return d.toLocaleDateString('sv');
 }
 
 function horaColombiaActual() {
-  var c = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Bogota'}));
-  return { h: c.getHours(), m: c.getMinutes() };
+  var d = new Date();
+  return { h: d.getHours(), m: d.getMinutes() };
 }
 
 function esDespuesDe145() {
@@ -3429,12 +3605,21 @@ function exportarKML() {
     var supOk = supFilt === 'todos' || e.supervisor === supFilt;
     return e.fecha === fecha && supOk && e.lat && e.lng;
   });
-  // Ruta viene del Sheet (ya cargada en rutaData)
-  var trackPts = (rutaData || []).filter(function(p) {
-    var fechaOk = p.fecha === fecha;
-    var supOk   = supFilt === 'todos' || p.sup === supFilt;
-    return fechaOk && supOk;
-  }).sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
+  // Ruta: Sheet + localStorage (igual que renderMapa)
+  var ptsSheet = (rutaData || []).filter(function(p) {
+    return p.fecha === fecha && (supFilt === 'todos' || p.sup === supFilt);
+  });
+  var ptsLocal = [];
+  try {
+    var tsEnSheet = new Set(ptsSheet.map(function(p){ return p.ts; }));
+    ptsLocal = JSON.parse(localStorage.getItem(TRACKER_KEY) || '[]').filter(function(p) {
+      return p.fecha === fecha
+        && (supFilt === 'todos' || p.sup === supFilt)
+        && !tsEnSheet.has(p.ts);
+    });
+  } catch(e) {}
+  var trackPts = ptsSheet.concat(ptsLocal)
+    .sort(function(a,b){ return (a.ts||'').localeCompare(b.ts||''); });
   if (!evsFecha.length && !trackPts.length) { alert('No hay datos de ubicación para esta fecha.'); return; }
 
   var supColors = {'Juan Carlos Oviedo':'jco','Brayan Pérez':'bp'};
@@ -3492,6 +3677,11 @@ function showTab(id, btn) {
 
   if (id === 'mapa') {
     if (mapaAcceso) setTimeout(function() { iniciarMapa(); }, 150);
+    return;
+  }
+
+  if (id === 'tendencias') {
+    cargarTendencias();
     return;
   }
 
