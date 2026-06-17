@@ -2215,7 +2215,16 @@ function cargarDesdeGAS() {
           if (m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
           return s.length >= 10 ? s.substring(0, 10) : s;
         };
+        var pick = function(r, claves) {
+          for (var i = 0; i < claves.length; i++) {
+            if (r[claves[i]] !== undefined && r[claves[i]] !== '') return r[claves[i]];
+          }
+          return undefined;
+        };
         evals = data.data.map(function(r) {
+          var latRaw = pick(r, ['Lat','lat','Latitud','LAT']);
+          var lngRaw = pick(r, ['Lng','lng','Lon','Long','Longitud','LNG']);
+          var accRaw = pick(r, ['Acc','acc','Precisión','Precision','Precisión (m)']);
           return {
             supervisor: r['Supervisor'], supIdx: SUPS.indexOf(r['Supervisor']),
             cosechero: r['Cosechero'], cosechCod: r['Código'],
@@ -2226,7 +2235,11 @@ function cargarDesdeGAS() {
             totalRacimos: parseFloat(r['Total Racimos'])||0, pctVerde: parseFloat(r['% Verde'])||0,
             cal: { nota: r['Calificación Nota'], label: r['Calificación Label'], cls: r['Calificación Nota']==='A'?'tag-ok':r['Calificación Nota']==='B'?'tag-warn':'tag-bad' },
             pts: { suelto: parseFloat(r['Fruto Suelto'])||0, danio: parseFloat(r['Daño Mecánico'])||0, pedu: parseFloat(r['Pedúnculo Largo'])||0, hoja: parseFloat(r['Disposición Hoja'])||0, plato: parseFloat(r['Plato Enmalezado'])||0 },
-            prom: parseFloat(r['Prom Parámetros'])||0, obs: r['Observaciones']||''
+            prom: parseFloat(r['Prom Parámetros'])||0, obs: r['Observaciones']||'',
+            lat: latRaw !== undefined ? parseFloat(latRaw) : null,
+            lng: lngRaw !== undefined ? parseFloat(lngRaw) : null,
+            acc: accRaw !== undefined ? parseFloat(accRaw) : null,
+            hora: pick(r, ['Hora','hora']) || ''
           };
         });
       }
