@@ -1556,10 +1556,6 @@ function guardar() {
         registro.lng = lng;
         registro.acc = acc; // precisión en metros
         enviarAGAS(registro);
-        if (evals.length > 0) {
-          evals[evals.length-1].lat = lat;
-          evals[evals.length-1].lng = lng;
-        }
         if (acc > 50) {
           mostrarToast('GPS con precision de ' + acc + 'm — muevase a zona abierta para mejor señal');
         }
@@ -3415,7 +3411,7 @@ function renderMapa(fecha, supFilt) {
   // Si es fecha histórica, también quitar la ubicación actual
   mapaMap.eachLayer(function(layer) {
     if (esHoy && (layer === miUbicacionMarker || layer === miUbicacionCircle)) return;
-    if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.Circle) {
+    if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.CircleMarker) {
       mapaMap.removeLayer(layer);
     }
   });
