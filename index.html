@@ -789,12 +789,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button id="tbtn-evals" class="tab" onclick="setTendVista('evals',this)" style="flex:none;padding:6px 12px;font-size:12px;">Evaluaciones</button>
       </div>
       <button onclick="cargarTendencias()" style="padding:7px 12px;background:var(--g50);border:.5px solid var(--g400);border-radius:var(--rr);font-size:12px;color:var(--g600);cursor:pointer;display:flex;align-items:center;gap:5px;">
-        <i class="ti ti-refresh">
- Actualizar</button>
+        <i class="ti ti-refresh"></i> Actualizar</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center;">
+      <input type="text" id="tend-buscar" placeholder="Buscar cosechero..." oninput="renderTendencias()"
+        style="flex:1;min-width:160px;padding:7px 10px;border-radius:var(--rr);border:.5px solid var(--bd2);background:var(--bg2);color:var(--tx);font-size:13px;outline:none;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);cursor:pointer;white-space:nowrap;">
+        <input type="checkbox" id="tend-vertodos" onchange="renderTendencias()"> Ver todos
+      </label>
     </div>
 
     <div class="metrics" id="tend-metrics"></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;" id="tend-legend"></div>
+    <div id="tend-mas" style="font-size:11px;color:var(--tx3);margin-bottom:.5rem;"></div>
     <div style="position:relative;width:100%;height:300px;">
       <canvas id="tend-chart" role="img" aria-label="Gráfica de tendencias de cosecheros por semana"></canvas>
     </div>
@@ -2897,11 +2905,18 @@ function buildTendenciasLocal() {
     var sem = semanaDeEval(e.fecha);
     if (!sem) return;
     semSet[sem] = true;
-    var cod = e.cosechCod || e.cosechero;
-    if (!cosMap[cod]) cosMap[cod] = { nombre: e.cosechero, supervisor: e.supervisor, semMap: {} };
-    if (!cosMap[cod].semMap[sem]) cosMap[cod].semMap[sem] = { vals: [], proms: [] };
-    cosMap[cod].semMap[sem].vals.push(e.pctVerde);
-    cosMap[cod].semMap[sem].proms.push(e.prom || 0);
+    // Una evaluación puede cubrir varios cosecheros a la vez (cosechCod: "A1, A2");
+    // se atribuye a cada uno individualmente para que sus tendencias no se mezclen.
+    var codigos = (e.cosechCod || e.cosechero || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var nombres = (e.cosechero || '').split('/').map(function(s) { return s.trim(); });
+    if (!codigos.length) codigos = [e.cosechero];
+    codigos.forEach(function(cod, idx) {
+      var nombre = nombres[idx] || nombres[0] || cod;
+      if (!cosMap[cod]) cosMap[cod] = { nombre: nombre, supervisor: e.supervisor, semMap: {} };
+      if (!cosMap[cod].semMap[sem]) cosMap[cod].semMap[sem] = { vals: [], proms: [] };
+      cosMap[cod].semMap[sem].vals.push(e.pctVerde);
+      cosMap[cod].semMap[sem].proms.push(e.prom || 0);
+    });
     if (!supMap[e.supervisor]) supMap[e.supervisor] = { semMap: {} };
     if (!supMap[e.supervisor].semMap[sem]) supMap[e.supervisor].semMap[sem] = [];
     supMap[e.supervisor].semMap[sem].push(e.pctVerde);
@@ -2977,10 +2992,35 @@ function renderTendencias() {
   var cosMap  = tendData.cosecheros || {};
   var supMap  = tendData.supervisores || {};
 
-  // Filtrar cosecheros por supervisor
+  var TEND_MAX_LINEAS = 8;
+  var buscarEl  = document.getElementById('tend-buscar');
+  var verTodos  = document.getElementById('tend-vertodos').checked;
+  var busqueda  = buscarEl ? buscarEl.value.trim().toLowerCase() : '';
+  var masEl     = document.getElementById('tend-mas');
+
+  // Filtrar cosecheros por supervisor y por búsqueda de nombre
   var cosList = Object.keys(cosMap).filter(function(cod) {
-    return supFilt === 'todos' || cosMap[cod].supervisor === supFilt;
+    var supOk = supFilt === 'todos' || cosMap[cod].supervisor === supFilt;
+    var buscaOk = !busqueda || cosMap[cod].nombre.toLowerCase().indexOf(busqueda) !== -1;
+    return supOk && buscaOk;
   });
+
+  var totalCosList = cosList.length;
+  if (!verTodos && !busqueda && cosList.length > TEND_MAX_LINEAS) {
+    // Mostrar por defecto los más críticos (mayor % verde promedio) para no saturar la gráfica
+    cosList = cosList.slice().sort(function(a, b) {
+      var pa = cosMap[a].semanas.filter(function(v){return v!==null;});
+      var pb = cosMap[b].semanas.filter(function(v){return v!==null;});
+      var pma = pa.length ? pa.reduce(function(s,v){return s+v;},0)/pa.length : 0;
+      var pmb = pb.length ? pb.reduce(function(s,v){return s+v;},0)/pb.length : 0;
+      return pmb - pma;
+    }).slice(0, TEND_MAX_LINEAS);
+  }
+  if (masEl) {
+    masEl.textContent = totalCosList > cosList.length
+      ? 'Mostrando los ' + cosList.length + ' cosecheros con mayor % verde de ' + totalCosList + ' en total — usa "Ver todos" o busca por nombre para ver el resto.'
+      : '';
+  }
 
   var legend  = document.getElementById('tend-legend');
   var metrics = document.getElementById('tend-metrics');
