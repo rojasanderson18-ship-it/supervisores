@@ -3099,8 +3099,15 @@ function renderTendencias() {
         + cosMap[cod].nombre + '</span>';
     }).join('') + (tendVista==='verde' ? '<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--r600);"><span style="width:24px;height:2px;background:#E24B4A;flex-shrink:0;border-top:2px dashed #E24B4A;height:0;margin-top:1px;"></span>Límite 3%</span>' : '');
 
+    var maxVerde = 8;
+    if (tendVista === 'verde') {
+      cosList.forEach(function(cod){
+        cosMap[cod].semanas.forEach(function(v){ if (v !== null && v > maxVerde) maxVerde = v; });
+      });
+      maxVerde = Math.ceil((maxVerde * 1.15) / 2) * 2;
+    }
     var yConfig = tendVista === 'verde'
-      ? { min:0, max:8, ticks:{ callback:function(v){return v+'%';} }, grid:{color:'rgba(0,0,0,0.05)'} }
+      ? { min:0, max:maxVerde, ticks:{ callback:function(v){return v+'%';} }, grid:{color:'rgba(0,0,0,0.05)'} }
       : { min:0.5, max:4.5, ticks:{ stepSize:1, callback:function(v){ return v===4?'A':v===3?'B':v===2?'C':v===1?'D':''; } }, grid:{color:'rgba(0,0,0,0.05)'} };
 
     buildTendChart(semanas, datasets, yConfig, function(ctx){
