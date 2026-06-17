@@ -664,6 +664,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           </select>
         </div>
       </div>
+      <div class="frow" style="margin-top:8px;margin-bottom:0;">
+        <div class="fg">
+          <label>Cosechero</label>
+          <select id="hist-cosech" onchange="filtrarHistorial()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
         <span id="hist-count" style="font-size:12px;color:var(--tx2);">— evaluaciones</span>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -2669,10 +2677,25 @@ function initHistorial() {
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   document.getElementById('hist-desde').value = fechaStr(hace30);
   document.getElementById('hist-hasta').value = hoy;
+  actualizarSelectHistCosech();
   // Mostrar lo que hay en local mientras carga GAS
   filtrarHistorial();
   // Siempre recargar desde GAS para tener datos frescos
-  cargarDesdeGAS().then(function() { filtrarHistorial(); });
+  cargarDesdeGAS().then(function() { actualizarSelectHistCosech(); filtrarHistorial(); });
+}
+
+function actualizarSelectHistCosech() {
+  var sel = document.getElementById('hist-cosech');
+  if (!sel) return;
+  var valorActual = sel.value;
+  var lista = personal.slice().sort(function(a,b) { return a.nombre.localeCompare(b.nombre); });
+  sel.innerHTML = '<option value="">Todos</option>';
+  lista.forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.cod; o.textContent = p.nombre + ' (' + p.cod + ')';
+    sel.appendChild(o);
+  });
+  sel.value = valorActual;
 }
 
 function filtrarHistorial() {
@@ -2680,6 +2703,8 @@ function filtrarHistorial() {
   var hasta = document.getElementById('hist-hasta').value;
   var sup   = document.getElementById('hist-sup').value;
   var cal   = document.getElementById('hist-cal').value;
+  var cosechEl = document.getElementById('hist-cosech');
+  var cosechCod = cosechEl ? cosechEl.value : '';
 
   // Incluir evaluaciones del Sheet + las pendientes en cola local
   var idsSinc = new Set(evals.map(function(e) { return e.id; }));
@@ -2690,7 +2715,8 @@ function filtrarHistorial() {
     var fechaOk = (!desde || e.fecha >= desde) && (!hasta || e.fecha <= hasta);
     var supOk   = !sup || e.supervisor === sup;
     var calOk   = !cal || (e.cal && e.cal.nota === cal);
-    return fechaOk && supOk && calOk;
+    var cosOk   = !cosechCod || (e.cosechCod || '').split(',').map(function(s) { return s.trim(); }).indexOf(cosechCod) !== -1;
+    return fechaOk && supOk && calOk && cosOk;
   });
 
   renderHistorialFiltrado();
@@ -2745,6 +2771,8 @@ function diagnosticarSync() {
 function limpiarFiltrosHistorial() {
   document.getElementById('hist-sup').value = '';
   document.getElementById('hist-cal').value = '';
+  var cosechEl = document.getElementById('hist-cosech');
+  if (cosechEl) cosechEl.value = '';
   var hoy = fechaColombiaHoy();
   var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   document.getElementById('hist-desde').value = fechaStr(hace30);
