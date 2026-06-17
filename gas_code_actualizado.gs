@@ -53,6 +53,9 @@ function handleRequest(e) {
     } else if (action === 'generarPDFReporte') {
       const p = body.params || {};
       result = generarPDFReporte(p);
+    } else if (action === 'generarPDFGerencia') {
+      const p = body.params || {};
+      result = generarPDFGerencia(p);
     } else if (action === 'getTendencias') {
       result = getTendencias(params);
     } else if (action === 'crearAnalisis') {
@@ -929,3 +932,288 @@ function getTendencias(params) {
 
   return {ok:true,data:{semanas,cosecheros:cosResult,supervisores:supResult}};
 }
+
+// ── REPORTE EJECUTIVO PARA GERENCIA ────────────────────────────────────────────
+// Calificación: misma fórmula que usa la app (70% % racimos verdes + 30% calidad de parámetros)
+function notaGerencia(pctVerde, prom) {
+  const goodVerde   = Math.max(0, 100 - pctVerde * 20);
+  const goodCalidad = (prom || 0) / 5 * 100;
+  const score       = goodVerde * 0.7 + goodCalidad * 0.3;
+  if (score >= 85) return 'A';
+  if (score >= 60) return 'B';
+  if (score >= 35) return 'C';
+  return 'D';
+}
+const NOTA_COLOR = {
+  A: {bg:'#EAF3DE', col:'#3B6D11', label:'Excelente'},
+  B: {bg:'#FAEEDA', col:'#854F0B', label:'Aceptable'},
+  C: {bg:'#F3E3D3', col:'#A35B0B', label:'Deficiente'},
+  D: {bg:'#FCEBEB', col:'#A32D2D', label:'Crítico'}
+};
+
+function generarPDFGerencia(params) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet || sheet.getLastRow() < 2) return { ok:false, error:'Sin datos' };
+
+  const fechaIni = params.fechaIni || '', fechaFin = params.fechaFin || '';
+  const rows = sheet.getDataRange().getValues(), hdrs = rows[0];
+  const NUMS = ['Racimos Maduros','Racimos Sobremaduro','Racimos Verdes','Racimos Podridos','Racimos Dejados',
+                'Total Racimos','% Verde','Días Ciclo','Fruto Suelto','Daño Mecánico',
+                'Pedúnculo Largo','Disposición Hoja','Plato Enmalezado','Prom Parámetros'];
+
+  let data = rows.slice(1).map(r => {
+    const o = {};
+    hdrs.forEach((h,i) => {
+      if (h === 'Fecha') o[h] = r[i] instanceof Date ? Utilities.formatDate(r[i],'America/Bogota','yyyy-MM-dd') : String(r[i]).trim().substring(0,10);
+      else if (NUMS.includes(h)) o[h] = parseFloat(r[i]) || 0;
+      else o[h] = r[i] !== null && r[i] !== undefined ? String(r[i]).trim() : '';
+    });
+    return o;
+  }).filter(o => o['ID']);
+
+  if (fechaIni) data = data.filter(r => r['Fecha'] >= fechaIni);
+  if (fechaFin) data = data.filter(r => r['Fecha'] <= fechaFin);
+  if (!data.length) return { ok:false, error:'Sin evaluaciones en ese periodo' };
+
+  const sum = (arr,k) => arr.reduce((a,r) => a + (r[k]||0), 0);
+  const pctOf = (verde,total) => total > 0 ? Math.round(verde/total*1000)/10 : 0;
+
+  // ── KPIs globales ──
+  const totRacimos  = sum(data,'Total Racimos');
+  const totVerde     = sum(data,'Racimos Verdes');
+  const pctVerdeGlob = pctOf(totVerde, totRacimos);
+  const lotes        = [...new Set(data.map(r => r['Frente/Lote']).filter(Boolean))];
+  const supervisores = [...new Set(data.map(r => r['Supervisor']).filter(Boolean))];
+  const cosecherosCD = [...new Set(data.filter(r => r['Calificación Nota']==='C'||r['Calificación Nota']==='D').map(r => r['Código']))];
+  const lotesFC       = [...new Set(data.filter(r => r['Fuera Ciclo']==='SÍ').map(r => r['Frente/Lote']))];
+  const conGPS        = data.filter(r => r['Lat'] !== '' && r['Lat'] != null).length;
+  const pctGPS         = Math.round(conGPS/data.length*100);
+
+  // ── Tendencia semanal ──
+  const getSemana = fecha => {
+    const d = new Date(fecha); if (isNaN(d)) return null;
+    const thu = new Date(d); thu.setDate(d.getDate()-((d.getDay()+6)%7)+3);
+    const year = thu.getFullYear();
+    const week = Math.ceil(((thu-new Date(year,0,4))/864e5+1)/7);
+    return year+'-S'+String(week).padStart(2,'0');
+  };
+  const porSemana = {};
+  data.forEach(r => {
+    const s = getSemana(r['Fecha']); if (!s) return;
+    if (!porSemana[s]) porSemana[s] = {verde:0,total:0};
+    porSemana[s].verde += r['Racimos Verdes']; porSemana[s].total += r['Total Racimos'];
+  });
+  const semanas = Object.keys(porSemana).sort().map(s => ({sem:s, pct:pctOf(porSemana[s].verde,porSemana[s].total)}));
+  const tendenciaDelta = semanas.length >= 2 ? Math.round((semanas[0].pct - semanas[semanas.length-1].pct)*10)/10 : 0;
+
+  // ── Ranking por supervisor ──
+  const porSup = {};
+  data.forEach(r => {
+    const s = r['Supervisor']; if (!s) return;
+    if (!porSup[s]) porSup[s] = {evals:0, verde:0, total:0, prom:0};
+    porSup[s].evals++; porSup[s].verde += r['Racimos Verdes']; porSup[s].total += r['Total Racimos']; porSup[s].prom += (r['Prom Parámetros']||0);
+  });
+  const rankingSup = Object.keys(porSup).map(s => {
+    const d = porSup[s], pct = pctOf(d.verde,d.total), prom = d.prom/d.evals;
+    return { supervisor:s, evals:d.evals, pct, nota: notaGerencia(pct,prom) };
+  }).sort((a,b) => a.pct - b.pct);
+
+  // ── Cosecheros que requieren atención (>=2 evaluaciones en C/D) ──
+  const porCos = {};
+  data.forEach(r => {
+    const cod = r['Código']; if (!cod) return;
+    if (!porCos[cod]) porCos[cod] = {nombre:r['Cosechero'], supervisor:r['Supervisor'], evals:0, verde:0, total:0, cd:0};
+    porCos[cod].evals++; porCos[cod].verde += r['Racimos Verdes']; porCos[cod].total += r['Total Racimos'];
+    if (r['Calificación Nota']==='C'||r['Calificación Nota']==='D') porCos[cod].cd++;
+  });
+  const atencion = Object.values(porCos).filter(c => c.cd >= 2)
+    .map(c => ({...c, pct: pctOf(c.verde,c.total)}))
+    .sort((a,b) => b.cd/b.evals - a.cd/a.evals).slice(0,8);
+
+  // ── Lotes con peor calidad ──
+  const porLote = {};
+  data.forEach(r => {
+    const l = r['Frente/Lote']; if (!l) return;
+    if (!porLote[l]) porLote[l] = {palma:r['Tipo Palma'], supervisor:r['Supervisor'], verde:0, total:0, diasMax:0};
+    porLote[l].verde += r['Racimos Verdes']; porLote[l].total += r['Total Racimos'];
+    porLote[l].diasMax = Math.max(porLote[l].diasMax, r['Días Ciclo']||0);
+  });
+  const rankingLotes = Object.keys(porLote).map(l => {
+    const d = porLote[l], pct = pctOf(d.verde,d.total);
+    return { lote:l, palma:d.palma, supervisor:d.supervisor, pct, nota: notaGerencia(pct,3) };
+  }).sort((a,b) => b.pct - a.pct).slice(0,6);
+
+  // ── Lotes fuera de ciclo ──
+  const fueraCiclo = lotesFC.map(l => {
+    const fila = data.find(r => r['Frente/Lote']===l && r['Fuera Ciclo']==='SÍ');
+    return { lote:l, palma:fila['Tipo Palma'], dias:fila['Días Ciclo'], supervisor:fila['Supervisor'] };
+  }).sort((a,b) => b.dias - a.dias).slice(0,8);
+
+  // ── Promedio parámetros de calidad ──
+  const n = data.length;
+  const paramsCalidad = {
+    'Fruto suelto en suelo':   sum(data,'Fruto Suelto')/n,
+    'Daño mecánico / cortes':  sum(data,'Daño Mecánico')/n,
+    'Pedúnculo largo':         sum(data,'Pedúnculo Largo')/n,
+    'Disposición de hoja':     sum(data,'Disposición Hoja')/n,
+    'Plato enmalezado':        sum(data,'Plato Enmalezado')/n
+  };
+  const peorParam = Object.keys(paramsCalidad).reduce((a,b) => paramsCalidad[a] < paramsCalidad[b] ? a : b);
+
+  // ── Composición de racimos ──
+  const rM = sum(data,'Racimos Maduros'), rS = sum(data,'Racimos Sobremaduro'),
+        rV = sum(data,'Racimos Verdes'), rP = sum(data,'Racimos Podridos'), rD = sum(data,'Racimos Dejados');
+  const totComp = rM+rS+rV+rP || 1;
+
+  // ── Análisis narrativo automático ──
+  let analisis = '';
+  if (tendenciaDelta !== 0) {
+    analisis += tendenciaDelta > 0
+      ? `La calidad de cosecha mejoró durante el periodo: el % de fruta verde bajó ${Math.abs(tendenciaDelta)} puntos porcentuales entre la primera y la última semana, señal de que los correctivos aplicados están funcionando. `
+      : `La calidad de cosecha empeoró durante el periodo: el % de fruta verde subió ${Math.abs(tendenciaDelta)} puntos porcentuales entre la primera y la última semana — requiere atención inmediata. `;
+  }
+  const peorSup = rankingSup[rankingSup.length-1];
+  if (peorSup && (peorSup.nota==='C'||peorSup.nota==='D')) {
+    analisis += `El supervisor con peor desempeño es ${peorSup.supervisor} (${peorSup.pct}% verde, nota ${peorSup.nota}). `;
+  }
+  if (atencion.length) {
+    const top = atencion[0];
+    analisis += `${top.nombre} (${top.supervisor}) es el cosechero con mayor reincidencia en nota C/D (${top.cd} de ${top.evals} evaluaciones) — se recomienda capacitación o acompañamiento directo en campo. `;
+  }
+  const loteRiesgo = rankingLotes.find(l => fueraCiclo.some(f => f.lote===l.lote));
+  if (loteRiesgo) {
+    analisis += `El ${loteRiesgo.lote} combina baja calidad (${loteRiesgo.pct}% verde, nota ${loteRiesgo.nota}) con corte atrasado, lo que sugiere un problema de programación de corte y no solo del cosechero. `;
+  }
+  analisis += `El parámetro más débil de la finca es "${peorParam}" (${paramsCalidad[peorParam].toFixed(1)}/5) — vale la pena revisar si falta personal de mantenimiento en los lotes con peor calificación.`;
+
+  const periodoLabel = fechaIni === fechaFin ? fechaIni : `${fechaIni} al ${fechaFin}`;
+  const html = buildHTMLGerencia({
+    periodoLabel, totalEvals:data.length, totalLotes:lotes.length, totalSup:supervisores.length,
+    pctVerdeGlob, cosecherosCD:cosecherosCD.length, lotesFC:lotesFC.length, pctGPS, tendenciaDelta,
+    semanas, rankingSup, atencion, rankingLotes, fueraCiclo, params: paramsCalidad, peorParam,
+    racimos:{M:Math.round(rM/totComp*100), S:Math.round(rS/totComp*100), V:Math.round(rV/totComp*100), P:Math.round(rP/totComp*100), D:rD},
+    analisis
+  });
+  const blob = Utilities.newBlob(html,'text/html','reporte.html');
+  const pdfBlob = blob.getAs('application/pdf');
+  const nombre = `Reporte_Ejecutivo_Gerencia_${fechaIni}_${fechaFin}.pdf`;
+  return { ok:true, base64: Utilities.base64Encode(pdfBlob.getBytes()), filename: nombre };
+}
+
+function buildHTMLGerencia(d) {
+  const tag = (nota,extra) => `<span style="display:inline-block;padding:1px 7px;border-radius:8px;font-size:6.6pt;font-weight:bold;background:${NOTA_COLOR[nota].bg};color:${NOTA_COLOR[nota].col};">${nota}${extra?' · '+extra:''}</span>`;
+  const bar = (pct,color) => `<div style="background:#eee;border-radius:4px;height:8px;width:100%;"><div style="height:8px;border-radius:4px;width:${Math.min(100,pct)}%;background:${color};"></div></div>`;
+
+  const filasSup = d.rankingSup.map(s => `<tr><td>${s.supervisor}</td><td>${bar(Math.min(100,s.pct*16),NOTA_COLOR[s.nota].col)}</td><td style="text-align:center;">${tag(s.nota, s.pct+'%')}</td></tr>`).join('');
+
+  const filasSemanas = d.semanas.length
+    ? `<tr style="background:#f7f7f7;">${d.semanas.map(s=>`<td>${s.sem}</td>`).join('')}</tr><tr>${d.semanas.map(s=>`<td>${bar(s.pct*16,s.pct<=1?'#3B6D11':s.pct<=3?'#854F0B':s.pct<=5?'#A35B0B':'#A32D2D')}${s.pct}%</td>`).join('')}</tr>`
+    : '<tr><td>Sin suficientes datos para mostrar tendencia</td></tr>';
+
+  const filasParams = Object.keys(d.params).map(k => {
+    const v = d.params[k]; const nivel = v>=4.5?'Bueno':v>=3.5?'Aceptable':'Débil';
+    return `<tr><td style="width:46%;">${k}</td><td>${bar(v/5*100,'#3B6D11')}</td><td style="text-align:right;width:14%;">${v.toFixed(1)} ${nivel}</td></tr>`;
+  }).join('');
+
+  const filasAtencion = d.atencion.length ? d.atencion.map(c => {
+    const nota = c.cd >= c.evals*0.6 ? 'D' : 'C';
+    return `<tr><td>${c.nombre}</td><td>${c.supervisor}</td><td style="text-align:center;">${c.pct}%</td><td style="text-align:center;">${tag(nota)}</td><td style="text-align:center;">${c.cd}/${c.evals}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" style="color:#999;">Ningún cosechero con reincidencia en C/D</td></tr>';
+
+  const filasLotes = d.rankingLotes.map(l => `<tr><td>${l.lote}</td><td>${l.palma}</td><td style="text-align:center;">${l.pct}%</td><td style="text-align:center;">${tag(l.nota)}</td><td>${l.supervisor}</td></tr>`).join('');
+
+  const filasFC = d.fueraCiclo.length ? d.fueraCiclo.map(f => `<tr><td>${f.lote}</td><td>${f.palma}</td><td style="text-align:center;color:#A32D2D;">${f.dias}</td><td style="text-align:center;">${CICLO_MAX_GER[f.palma]||'-'}</td><td>${f.supervisor}</td></tr>`).join('') : '<tr><td colspan="5" style="color:#999;">Ningún lote fuera de ciclo</td></tr>';
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;}
+body{font-family:Arial,sans-serif;font-size:7.6pt;padding:10px;color:#1f2924;}
+h2{font-size:7.6pt;font-weight:bold;color:#2d6011;text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid #2d6011;padding-bottom:2px;margin:0 0 5px;}
+table{width:100%;border-collapse:collapse;}
+td,th{padding:2px 4px;vertical-align:middle;}
+.kpi{border-radius:6px;text-align:center;padding:7px 4px;}
+.box{border:1px solid #e3e3e3;border-radius:6px;padding:7px 8px;margin-bottom:7px;background:#fff;}
+.col{vertical-align:top;padding:0 5px;}
+</style></head><body>
+
+<table style="background:linear-gradient(135deg,#2d6011,#3B8a1d);border-radius:7px;margin-bottom:9px;"><tr><td style="padding:10px 14px;color:#fff;">
+  <table><tr>
+    <td style="width:60%;"><div style="font-size:15pt;font-weight:bold;letter-spacing:.5px;">PALMA GRANDE S.A.S</div>
+      <div style="font-size:8.5pt;opacity:.92;">Reporte Ejecutivo de Calidad de Cosecha</div></td>
+    <td style="text-align:right;font-size:7.2pt;opacity:.85;">Periodo: ${d.periodoLabel}<br>${d.totalSup} supervisores · ${d.totalLotes} lotes · ${d.totalEvals} evaluaciones<br>${d.pctGPS}% con ubicación GPS verificada</td>
+  </tr></table>
+</td></tr></table>
+
+<table style="margin-bottom:8px;"><tr>
+  <td style="width:25%;padding:2px;"><table class="kpi" style="background:#EAF3DE;"><tr><td><div style="font-size:15pt;font-weight:bold;color:#3B6D11;">${d.pctVerdeGlob}%</div><div style="font-size:6.6pt;color:#3B6D11;">% Verde global</div></td></tr></table></td>
+  <td style="width:25%;padding:2px;"><table class="kpi" style="background:#FAEEDA;"><tr><td><div style="font-size:15pt;font-weight:bold;color:#854F0B;">${d.cosecherosCD}</div><div style="font-size:6.6pt;color:#854F0B;">Cosecheros C/D</div></td></tr></table></td>
+  <td style="width:25%;padding:2px;"><table class="kpi" style="background:#FCEBEB;"><tr><td><div style="font-size:15pt;font-weight:bold;color:#A32D2D;">${d.lotesFC}</div><div style="font-size:6.6pt;color:#A32D2D;">Lotes fuera de ciclo</div></td></tr></table></td>
+  <td style="width:25%;padding:2px;"><table class="kpi" style="background:#EEEDFE;"><tr><td><div style="font-size:15pt;font-weight:bold;color:#534AB7;">${d.tendenciaDelta>0?'&#9660; ':d.tendenciaDelta<0?'&#9650; ':''}${Math.abs(d.tendenciaDelta)}pp</div><div style="font-size:6.6pt;color:#534AB7;">${d.tendenciaDelta>=0?'Mejora':'Empeoró'} en el periodo</div></td></tr></table></td>
+</tr></table>
+
+<div class="box" style="background:#F4F8F0;border-color:#cfe2bd;">
+  <h2>Análisis y recomendaciones</h2>
+  <div style="font-size:7.4pt;line-height:1.45;color:#2c3a2c;">${d.analisis}</div>
+</div>
+
+<table><tr>
+<td class="col" style="width:50%;">
+
+  <div class="box"><h2>Criterios de calificación</h2><table>
+    <tr style="background:#f7f7f7;"><th style="text-align:left;">Nota</th><th style="text-align:left;">Significado</th><th style="text-align:left;">Acción</th></tr>
+    <tr><td>${tag('A')}</td><td>Excelente / muy bueno</td><td>Mantener estándar</td></tr>
+    <tr><td>${tag('B')}</td><td>Aceptable</td><td>Reforzar en próxima visita</td></tr>
+    <tr><td>${tag('C')}</td><td>Deficiente</td><td>Llamado de atención + seguimiento</td></tr>
+    <tr><td>${tag('D')}</td><td>Crítico</td><td>Capacitación obligatoria</td></tr>
+  </table>
+  <div style="font-size:6.4pt;color:#888;margin-top:4px;">Nota = 70% calidad de racimos (% verde) + 30% calidad de parámetros de campo.</div>
+  </div>
+
+  <div class="box"><h2>Ranking por supervisor</h2><table>
+    <tr style="background:#f7f7f7;"><th style="text-align:left;">Supervisor</th><th style="text-align:left;width:40%;">% Verde</th><th>Nota</th></tr>
+    ${filasSup}
+  </table></div>
+
+  <div class="box"><h2>Tendencia semanal % verde global</h2><table>${filasSemanas}</table></div>
+
+  <div class="box"><h2>Promedio parámetros de calidad (finca)</h2><table>${filasParams}</table></div>
+
+</td>
+<td class="col" style="width:50%;">
+
+  <div class="box"><h2>Cosecheros que requieren atención (C/D recurrente)</h2><table>
+    <tr style="background:#f7f7f7;"><th style="text-align:left;">Cosechero</th><th style="text-align:left;">Supervisor</th><th>%V</th><th>Nota</th><th>C/D</th></tr>
+    ${filasAtencion}
+  </table></div>
+
+  <div class="box"><h2>Lotes con peor calidad de cosecha</h2><table>
+    <tr style="background:#f7f7f7;"><th style="text-align:left;">Lote</th><th style="text-align:left;">Palma</th><th>%V</th><th>Nota</th><th style="text-align:left;">Supervisor</th></tr>
+    ${filasLotes}
+  </table></div>
+
+  <div class="box"><h2>Lotes fuera de ciclo (corte atrasado)</h2><table>
+    <tr style="background:#f7f7f7;"><th style="text-align:left;">Lote</th><th style="text-align:left;">Palma</th><th>Días</th><th>Máx.</th><th style="text-align:left;">Supervisor</th></tr>
+    ${filasFC}
+  </table></div>
+
+  <div class="box"><h2>Composición de racimos (toda la finca)</h2><table><tr>
+    <td style="width:20%;padding:2px;"><table style="background:#EAF3DE;border-radius:4px;"><tr><td style="text-align:center;padding:4px;"><div style="font-size:10pt;font-weight:bold;color:#3B6D11;">${d.racimos.M}%</div><div style="font-size:6.2pt;color:#3B6D11;">Maduro</div></td></tr></table></td>
+    <td style="width:20%;padding:2px;"><table style="background:#FAEEDA;border-radius:4px;"><tr><td style="text-align:center;padding:4px;"><div style="font-size:10pt;font-weight:bold;color:#854F0B;">${d.racimos.S}%</div><div style="font-size:6.2pt;color:#854F0B;">Sobremad.</div></td></tr></table></td>
+    <td style="width:20%;padding:2px;"><table style="background:#EEEDFE;border-radius:4px;"><tr><td style="text-align:center;padding:4px;"><div style="font-size:10pt;font-weight:bold;color:#534AB7;">${d.racimos.V}%</div><div style="font-size:6.2pt;color:#534AB7;">Verde</div></td></tr></table></td>
+    <td style="width:20%;padding:2px;"><table style="background:#FCEBEB;border-radius:4px;"><tr><td style="text-align:center;padding:4px;"><div style="font-size:10pt;font-weight:bold;color:#A32D2D;">${d.racimos.P}%</div><div style="font-size:6.2pt;color:#A32D2D;">Podrido</div></td></tr></table></td>
+    <td style="width:20%;padding:2px;"><table style="background:#F0EBF8;border-radius:4px;"><tr><td style="text-align:center;padding:4px;"><div style="font-size:10pt;font-weight:bold;color:#5B2D9E;">${d.racimos.D}</div><div style="font-size:6.2pt;color:#5B2D9E;">Dejados</div></td></tr></table></td>
+  </tr></table></div>
+
+</td>
+</tr></table>
+
+<table style="margin-top:3px;border-top:1px solid #ddd;"><tr>
+  <td style="font-size:6.2pt;color:#999;">Palma Grande S.A.S — Supervisión de cosecha</td>
+  <td style="font-size:6.2pt;color:#999;text-align:right;">Generado: ${Utilities.formatDate(new Date(),'America/Bogota','dd/MM/yyyy HH:mm')}</td>
+</tr></table>
+
+</body></html>`;
+}
+
+const CICLO_MAX_GER = { 'guineensis':13, 'hibrido':22 };
