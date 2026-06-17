@@ -1012,6 +1012,7 @@ window.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() { onBar.style.display = 'none'; }, 3500);
     sincronizarCola();
     cargarDesdeGAS();
+    enviarPuntosAlSheet();
   });
 
   // Al iniciar con red, sincronizar cola pendiente
@@ -1038,9 +1039,14 @@ window.addEventListener('DOMContentLoaded', function() {
 
   // Reanudar tracker cuando el usuario vuelve a la app (desde background o al desbloquear pantalla)
   document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible') {
+      // Antes de que el SO pueda suspender la app, intentar enviar lo acumulado
+      enviarPuntosAlSheet();
+      return;
+    }
     var supEl = document.getElementById('sel-sup');
     if (!supEl || supEl.value === '') return;
+    enviarPuntosAlSheet(); // enviar lo que se acumuló mientras estuvo en segundo plano
     iniciarTracker(); // iniciarTracker ya verifica la hora internamente
   });
 });
@@ -3633,12 +3639,13 @@ function iniciarTracker() {
       ultimoPunto = ahora;
 
       guardarPunto(pos, supIdx);
+      enviarPuntosAlSheet(); // intentar enviar de inmediato; el intervalo es solo respaldo
     },
     function() { /* error de GPS — watchPosition reintenta solo */ },
     { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
   );
 
-  // Enviar puntos al Sheet cada 5 minutos
+  // Respaldo: enviar puntos al Sheet cada 5 minutos (por si el envío inmediato falló)
   if (enviarInterval) clearInterval(enviarInterval);
   enviarInterval = setInterval(enviarPuntosAlSheet, 5 * 60 * 1000);
 
