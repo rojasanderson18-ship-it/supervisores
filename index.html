@@ -772,6 +772,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
 
+    <!-- Reporte ejecutivo para Gerencia -->
+    <div class="card" style="margin-top:1rem;background:var(--g50);border-color:var(--g400);">
+      <div class="stitle" style="margin:0 0 .35rem;"><i class="ti ti-report-money"></i> Reporte Ejecutivo (Gerencia)</div>
+      <div style="font-size:12px;color:var(--g600);margin-bottom:.75rem;line-height:1.5;">Consolida todos los supervisores y lotes del periodo: ranking, cosecheros en riesgo, lotes fuera de ciclo y un análisis automático.</div>
+      <div class="frow">
+        <div class="fg">
+          <label>Desde</label>
+          <input type="date" id="rg-fecha-ini">
+        </div>
+        <div class="fg">
+          <label>Hasta</label>
+          <input type="date" id="rg-fecha-fin">
+        </div>
+      </div>
+      <button class="bsave" onclick="generarReporteGerencia()" id="btn-rg">
+        <i class="ti ti-file-analytics"></i> Generar reporte ejecutivo
+      </button>
+    </div>
+
   </div>
 
   <!-- ══ TENDENCIAS ══ -->
@@ -2701,6 +2720,33 @@ function descargarPDF() {
         fecha: fecha
       }
     })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    btn.innerHTML = txtOrig; btn.disabled = false;
+    if (d.ok && d.base64) {
+      var url = descargarBase64PDF(d.base64, d.filename);
+      if (navigator.share && url) {
+        setTimeout(function() { navigator.share({title: d.filename}).catch(function(){}); }, 1200);
+      }
+    } else { alert('Error: ' + (d.error || 'No se pudo generar')); }
+  })
+  .catch(function() { btn.innerHTML = txtOrig; btn.disabled = false; alert('Error de conexion.'); });
+}
+
+function generarReporteGerencia() {
+  var fechaIni = document.getElementById('rg-fecha-ini').value;
+  var fechaFin = document.getElementById('rg-fecha-fin').value;
+  if (!fechaIni || !fechaFin) { alert('Selecciona el rango de fechas (desde / hasta).'); return; }
+  if (fechaFin < fechaIni) { alert('La fecha "Hasta" no puede ser anterior a "Desde".'); return; }
+
+  var btn = document.getElementById('btn-rg');
+  var txtOrig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Generando...';
+  btn.disabled = true;
+  fetch(GAS_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'generarPDFGerencia', params: { fechaIni: fechaIni, fechaFin: fechaFin } })
   })
   .then(function(r) { return r.json(); })
   .then(function(d) {
