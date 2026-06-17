@@ -1144,15 +1144,14 @@ function actualizarCalificacion(pct) {
   var titulo = document.getElementById('cal-titulo');
   var nota   = document.getElementById('cal-nota');
   var desc   = document.getElementById('cal-desc');
-  var cls, t, n, d;
-  if (pct === 0)           { cls='cal-a'; t='Excelente'; n='A'; d='Sin racimos verdes — cosecha impecable'; }
-  else if (pct <= 1)       { cls='cal-a'; t='Muy bueno'; n='A'; d=pct.toFixed(1)+'% verde — dentro del límite permitido'; }
-  else if (pct <= VERDE_LIMITE) { cls='cal-b'; t='Aceptable'; n='B'; d=pct.toFixed(1)+'% verde — cerca del límite máximo (3%)'; }
-  else if (pct <= 5)       { cls='cal-c'; t='Deficiente'; n='C'; d=pct.toFixed(1)+'% verde — supera el límite. Requiere corrección'; }
-  else                     { cls='cal-c'; t='Crítico'; n='D'; d=pct.toFixed(1)+'% verde — muy por encima del límite. Acción inmediata'; }
+  var prom   = calcP(pts);
+  var cal    = calFromPct(pct, prom);
+  var cls    = cal.nota === 'A' ? 'cal-a' : cal.nota === 'B' ? 'cal-b' : 'cal-c';
+  var d      = pct.toFixed(1) + '% verde';
+  if (prom > 0) d += ' · calidad parámetros: ' + prom.toFixed(1) + '/5';
   card.className    = 'cal-card ' + cls;
-  titulo.textContent = t;
-  nota.textContent   = n;
+  titulo.textContent = cal.label;
+  nota.textContent   = cal.nota;
   desc.textContent   = d;
 }
 
@@ -1400,6 +1399,9 @@ function setP(id, v) {
     document.getElementById('pb-' + id + '-' + i).classList.toggle('sel', i === v);
   }
   // El botón seleccionado ya cambia de color — badge eliminado
+  var r = getRacimos();
+  var tot = r.maduro + r.sobremaduro + r.verde + r.podrido;
+  if (tot > 0) actualizarCalificacion(Math.round(r.verde / tot * 1000) / 10);
 }
 
 function calcP(pm) {
