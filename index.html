@@ -1156,12 +1156,15 @@ function actualizarCalificacion(pct) {
   desc.textContent   = d;
 }
 
-function calFromPct(pct) {
-  if (pct === 0)            return {nota:'A', label:'Excelente', cls:'tag-ok'};
-  if (pct <= 1)             return {nota:'A', label:'Muy bueno',  cls:'tag-ok'};
-  if (pct <= VERDE_LIMITE)  return {nota:'B', label:'Aceptable',  cls:'tag-warn'};
-  if (pct <= 5)             return {nota:'C', label:'Deficiente', cls:'tag-bad'};
-  return                          {nota:'D', label:'Crítico',    cls:'tag-bad'};
+// Calificación final: 70% % de racimos verdes + 30% calidad de los demás parámetros
+function calFromPct(pct, prom) {
+  var goodVerde   = Math.max(0, 100 - pct * 20);
+  var goodCalidad = (prom || 0) / 5 * 100;
+  var score       = goodVerde * 0.7 + goodCalidad * 0.3;
+  if (score >= 85) return {nota:'A', label: pct === 0 ? 'Excelente' : 'Muy bueno', cls:'tag-ok'};
+  if (score >= 60) return {nota:'B', label:'Aceptable',  cls:'tag-warn'};
+  if (score >= 35) return {nota:'C', label:'Deficiente', cls:'tag-bad'};
+  return                  {nota:'D', label:'Crítico',    cls:'tag-bad'};
 }
 
 // ══ PERSONAL ═════════════════════════════════════════════════════════════════
@@ -1493,7 +1496,8 @@ function guardar() {
   var cosechero = personal.find(function(p) { return p.cod === cosechCod; });
   var max       = CICLO_MAX[palma];
   var pctVerde  = Math.round(r.verde / tot * 1000) / 10;
-  var cal       = calFromPct(pctVerde);
+  var prom      = Math.round(calcP(pts) * 10) / 10;
+  var cal       = calFromPct(pctVerde, prom);
 
   var registro = {
     id:           generarId(),
@@ -1521,7 +1525,7 @@ function guardar() {
     lng:          null,
     hora:         new Date().toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'}),
     pts:          {suelto: pts.suelto, danio: pts.danio, pedu: pts.pedu, hoja: pts.hoja, plato: pts.plato},
-    prom:         Math.round(calcP(pts) * 10) / 10
+    prom:         prom
   };
 
   evals.push(registro);
@@ -2467,7 +2471,8 @@ function renderReporteCosechero(cod, evs, periodo, fecha) {
   });
   racsAcum.dejados = evs.reduce(function(a,e) { return a + (e.racimos.dejados||0); }, 0);
   var pctVerde = totRac > 0 ? Math.round(racsAcum.verde / totRac * 1000) / 10 : 0;
-  var cal      = calFromPct(pctVerde);
+  var promCal  = evs.length > 0 ? evs.reduce(function(a,e) { return a + (e.prom||0); }, 0) / evs.length : 0;
+  var cal      = calFromPct(pctVerde, promCal);
 
   // Promedios parámetros
   var promParams = {};
@@ -2585,7 +2590,8 @@ function renderReporteGrupal(evs, periodo, fecha, supIdx) {
     var totRac = info.evals.reduce(function(a,e) { return a+e.totalRacimos; },0);
     var verdes = info.evals.reduce(function(a,e) { return a+(e.racimos.verde||0); },0);
     var pct    = totRac > 0 ? Math.round(verdes/totRac*1000)/10 : 0;
-    var cal    = calFromPct(pct);
+    var promCal = info.evals.reduce(function(a,e) { return a+(e.prom||0); },0) / info.evals.length;
+    var cal    = calFromPct(pct, promCal);
     return {cod, nombre:info.nombre, evals:info.evals.length, totRac, pct, cal};
   }).sort(function(a,b) { return a.pct - b.pct; });
 
