@@ -1075,7 +1075,7 @@ function generarPDFGerencia(params) {
   }
   const peorSup = rankingSup[rankingSup.length-1];
   if (peorSup && (peorSup.nota==='C'||peorSup.nota==='D')) {
-    analisis += `El supervisor con peor desempeño es ${peorSup.supervisor} (${peorSup.pct}% verde, nota ${peorSup.nota}). `;
+    analisis += `El equipo de ${peorSup.supervisor} es el que más necesita acompañamiento en calidad de corte (${peorSup.pct}% verde, nota ${peorSup.nota}). Esta nota mide % de fruta verde cosechada, no la cantidad de evaluaciones realizadas — un supervisor puede registrar más evaluaciones y aun así salir aquí si sus cosecheros tienen más fruta verde, eso no refleja menor esfuerzo, sino una oportunidad de reforzar técnica de corte en su frente. `;
   }
   if (atencion.length) {
     const top = atencion[0];
@@ -1170,10 +1170,12 @@ td,th{padding:2px 4px;vertical-align:middle;}
   <div style="font-size:6.4pt;color:#888;margin-top:4px;">Nota = 70% calidad de racimos (% verde) + 30% calidad de parámetros de campo.</div>
   </div>
 
-  <div class="box"><h2>Ranking por supervisor</h2><table>
+  <div class="box"><h2>Calidad de cosecha por supervisor</h2><table>
     <tr style="background:#f7f7f7;"><th style="text-align:left;">Supervisor</th><th style="text-align:left;width:40%;">% Verde</th><th>Nota</th></tr>
     ${filasSup}
-  </table></div>
+  </table>
+  <div style="font-size:6.4pt;color:#888;margin-top:4px;">Ordenado por % de fruta verde, no por cantidad de evaluaciones realizadas.</div>
+  </div>
 
   <div class="box"><h2>Tendencia semanal % verde global</h2><table>${filasSemanas}</table></div>
 
