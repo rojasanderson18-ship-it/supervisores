@@ -1558,11 +1558,15 @@ function guardar() {
         var lat = Math.round(pos.coords.latitude  * 1000000) / 1000000;
         var lng = Math.round(pos.coords.longitude * 1000000) / 1000000;
         var acc = Math.round(pos.coords.accuracy);
-        registro.lat = lat;
-        registro.lng = lng;
-        registro.acc = acc; // precisión en metros
+        if (acc <= GPS_ACC_MAX) {
+          registro.lat = lat;
+          registro.lng = lng;
+          registro.acc = acc; // precisión en metros
+        }
         enviarAGAS(registro);
-        if (acc > 50) {
+        if (acc > GPS_ACC_MAX) {
+          mostrarToast('GPS muy impreciso (±' + acc + 'm) — no se guardó la ubicación. Muévase a zona abierta.');
+        } else if (acc > 50) {
           mostrarToast('GPS con precision de ' + acc + 'm — muevase a zona abierta para mejor señal');
         }
       },
@@ -3288,6 +3292,7 @@ function resetFirma() {
 }
 
 // ══ MAPA DE RUTAS ════════════════════════════════════════════════════════════
+var GPS_ACC_MAX = 1000; // metros — por encima de esto se considera ubicación por red/IP, no GPS real
 var MAPA_PIN  = '2105';
 var mapaMap   = null;
 var mapaAcceso = false;
@@ -3720,6 +3725,7 @@ function enviarPuntosAlSheet() {
 }
 
 function guardarPunto(pos, supIdx) {
+  if (pos.coords.accuracy > GPS_ACC_MAX) return; // ubicación por red/IP, no confiable — descartar
   var punto = {
     lat:   Math.round(pos.coords.latitude  * 1000000) / 1000000,
     lng:   Math.round(pos.coords.longitude * 1000000) / 1000000,
