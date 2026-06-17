@@ -2180,13 +2180,20 @@ function enviarAGAS(payload) {
     });
 }
 
+function fetchConTimeout(url, ms) {
+  var ctrl = new AbortController();
+  var t = setTimeout(function() { ctrl.abort(); }, ms);
+  return fetch(url, { signal: ctrl.signal }).finally(function() { clearTimeout(t); });
+}
+
 function cargarDesdeGAS() {
   if (!GAS_URL || GAS_URL === 'TU_URL_GAS_AQUI') return Promise.resolve();
   var banner = document.getElementById('sync-banner');
   banner.style.display = 'flex';
 
-  // Cargar personal y evaluaciones en paralelo
-  var promPersonal = fetch(GAS_URL + '?action=listarPersonal')
+  // Cargar personal y evaluaciones en paralelo, con tope de tiempo para no
+  // dejar la app pegada en "Cargando datos..." si el GAS no responde
+  var promPersonal = fetchConTimeout(GAS_URL + '?action=listarPersonal', 12000)
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok && data.data.length > 0) {
@@ -2198,7 +2205,7 @@ function cargarDesdeGAS() {
     })
     .catch(function(e) { console.warn('GAS personal no disponible:', e); });
 
-  var promEvals = fetch(GAS_URL + '?action=listar')
+  var promEvals = fetchConTimeout(GAS_URL + '?action=listar', 12000)
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok && data.data.length > 0) {
