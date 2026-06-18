@@ -3356,7 +3356,8 @@ function resetFirma() {
 }
 
 // ══ MAPA DE RUTAS ════════════════════════════════════════════════════════════
-var GPS_ACC_MAX  = 100;  // metros — por encima de esto se descarta (red/IP, no GPS real)
+var GPS_ACC_MAX       = 100;  // metros — umbral exigente para el punto de cada evaluación
+var GPS_ACC_MAX_TRACK = 300;  // metros — umbral más permisivo para el trazo de ruta caminada (bajo sombra de palma la precisión es peor)
 var GPS_ACC_GOOD = 20;   // metros — si se logra esta precisión, no hace falta esperar más
 var GPS_WAIT_MS  = 8000; // tiempo máximo (ms) esperando una mejor lectura de GPS al guardar
 var MAPA_PIN  = '2105';
@@ -3791,7 +3792,7 @@ function enviarPuntosAlSheet() {
 }
 
 function guardarPunto(pos, supIdx) {
-  if (pos.coords.accuracy > GPS_ACC_MAX) return; // ubicación por red/IP, no confiable — descartar
+  if (pos.coords.accuracy > GPS_ACC_MAX_TRACK) return; // ubicación por red/IP, no confiable — descartar
   var punto = {
     lat:   Math.round(pos.coords.latitude  * 1000000) / 1000000,
     lng:   Math.round(pos.coords.longitude * 1000000) / 1000000,
