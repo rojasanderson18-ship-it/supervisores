@@ -756,10 +756,15 @@ function buildHTMLIndividual(data, params, periodoLabel) {
   const obs=data.filter(r=>r['Observaciones']).map(r=>`<li>${r['Observaciones']}</li>`).join('');
 
   let nota;
-  if(pctV<=1) nota='A'; else if(pctV<=3) nota='B'; else if(pctV<=5) nota='C'; else nota='D';
-  const calBg=nota==='A'?'#EAF3DE':nota==='B'?'#FAEEDA':'#FCEBEB';
-  const calCol=nota==='A'?'#3B6D11':nota==='B'?'#854F0B':'#A32D2D';
-  const calLabel=nota==='A'?(pctV<=1?'Excelente':'Muy bueno'):nota==='B'?'Aceptable':nota==='C'?'Deficiente':'Crítico';
+  if (data[0]['Calificación Nota']) {
+    // Si es una sola evaluación, usar la nota ya calculada y guardada (misma fórmula que la app: 70% verde + 30% parámetros)
+    nota = data.length === 1 ? data[0]['Calificación Nota'] : notaGerencia(pctV, data.reduce((a,r)=>a+(r['Prom Parámetros']||0),0)/n);
+  } else {
+    nota = notaGerencia(pctV, data.reduce((a,r)=>a+(r['Prom Parámetros']||0),0)/n);
+  }
+  const calBg=NOTA_COLOR[nota].bg;
+  const calCol=NOTA_COLOR[nota].col;
+  const calLabel=nota==='A'?(pctV<=1?'Excelente':'Muy bueno'):NOTA_COLOR[nota].label;
 
   const nivelParam=v=>{const vi=Math.round(parseFloat(v)||0);if(vi>=5)return 'Excelente';if(vi>=4)return 'Bueno';if(vi>=3)return 'Aceptable';if(vi>=2)return 'Deficiente';return 'Muy deficiente';};
   const estrellas=v=>{const vi=Math.round(parseFloat(v)||0);let s='';for(let i=1;i<=5;i++)s+=`<span style="color:${i<=vi?'#639922':'#ccc'};font-size:13pt;">&#9733;</span>`;return s+` <b>${parseFloat(v).toFixed(1)}</b> &mdash; ${nivelParam(v)}`;};
@@ -834,12 +839,12 @@ function buildHTMLGrupal(data, params, periodoLabel) {
   const porCos={};
   data.forEach(r=>{
     const k=r['Código'];
-    if(!porCos[k]) porCos[k]={nombre:r['Cosechero'],cod:k,evals:0,rac:0,verde:0};
-    porCos[k].evals++; porCos[k].rac+=r['Total Racimos']; porCos[k].verde+=r['Racimos Verdes'];
+    if(!porCos[k]) porCos[k]={nombre:r['Cosechero'],cod:k,evals:0,rac:0,verde:0,prom:0};
+    porCos[k].evals++; porCos[k].rac+=r['Total Racimos']; porCos[k].verde+=r['Racimos Verdes']; porCos[k].prom+=(r['Prom Parámetros']||0);
   });
   const lista=Object.values(porCos).map(co=>({...co,pct:co.rac>0?Math.round(co.verde/co.rac*1000)/10:0})).sort((a,b)=>a.pct-b.pct);
   const filas=lista.map((co,i)=>{
-    let nota; if(co.pct<=1) nota='A'; else if(co.pct<=3) nota='B'; else if(co.pct<=5) nota='C'; else nota='D';
+    const nota = notaGerencia(co.pct, co.prom/co.evals);
     const calBg=nota==='A'?'#EAF3DE':nota==='B'?'#FAEEDA':'#FCEBEB';
     const calCol=nota==='A'?'#3B6D11':nota==='B'?'#854F0B':'#A32D2D';
     const vCol=co.pct>3?'#A32D2D':'#3B6D11';
