@@ -709,9 +709,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div style="font-size:12px;color:var(--b600);line-height:1.6;">Para <strong>agregar</strong> un cosechero nuevo, ve al Google Sheet y agrégalo en la hoja <strong>"Personal"</strong> con las columnas: Código · Nombre · Supervisor · SupIdx (0=Juan Carlos, 1=Brayan) · Activo (TRUE/FALSE).<br>Desde aquí puedes <strong>activar o inactivar</strong> directamente.</div>
       </div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:.75rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;gap:8px;">
+      <!-- Pestañas activos / inactivos -->
+      <div style="display:flex;gap:3px;background:var(--bg2);border-radius:var(--rr);padding:3px;border:.5px solid var(--bd);">
+        <button id="ptab-activos" class="tab active" onclick="setPersonalVista('activos')" style="flex:none;padding:6px 14px;font-size:12px;">
+          <i class="ti ti-user-check"></i> Activos
+        </button>
+        <button id="ptab-inactivos" class="tab" onclick="setPersonalVista('inactivos')" style="flex:none;padding:6px 14px;font-size:12px;">
+          <i class="ti ti-user-off"></i> Inactivos
+        </button>
+      </div>
       <button onclick="cargarDesdeGAS()" style="padding:7px 14px;background:var(--bg);border:.5px solid var(--bd2);border-radius:var(--rr);font-size:12px;color:var(--tx2);cursor:pointer;display:flex;align-items:center;gap:5px;">
-        <i class="ti ti-refresh"></i> Recargar desde Sheet
+        <i class="ti ti-refresh"></i> Recargar
       </button>
     </div>
 
@@ -2365,33 +2374,45 @@ function toggleActivo(cod) {
   }
 }
 
+var personalVista = 'activos';
+
+function setPersonalVista(vista) {
+  personalVista = vista;
+  document.getElementById('ptab-activos').classList.toggle('active', vista === 'activos');
+  document.getElementById('ptab-inactivos').classList.toggle('active', vista === 'inactivos');
+  renderPersonal();
+}
+
 function renderPersonal() {
   var wrap = document.getElementById('personal-list');
   var html = '';
+  var mostrarActivos = personalVista !== 'inactivos';
   SUPS.forEach(function(sup, i) {
     var grupo = personal.filter(function(p) { return p.supIdx === i; });
-    var activos = grupo.filter(function(p) { return p.activo; }).length;
+    var vista  = grupo.filter(function(p) { return mostrarActivos ? p.activo : !p.activo; });
+    var cntA   = grupo.filter(function(p) { return p.activo; }).length;
+    var cntI   = grupo.length - cntA;
     html += '<div class="personal-sup-block">'
       + '<div class="personal-sup-hdr">'
       + '<div class="av av' + (i+1) + '">' + INI[sup] + '</div>'
       + '<div><div class="sname">' + sup + '</div>'
-      + '<div class="smeta">' + activos + ' activo' + (activos !== 1 ? 's' : '') + ' de ' + grupo.length + '</div></div>'
+      + '<div class="smeta">' + cntA + ' activo' + (cntA !== 1 ? 's' : '') + ' · ' + cntI + ' inactivo' + (cntI !== 1 ? 's' : '') + '</div></div>'
       + '</div>'
       + '<div class="personal-table">'
-      + '<div class="personal-hdr"><span>Código</span><span>Nombre</span><span>Estado</span><span>Acciones</span></div>';
-    if (grupo.length === 0) {
-      html += '<div style="padding:1.5rem;text-align:center;color:var(--tx3);font-size:13px;">Sin cosecheros registrados</div>';
+      + '<div class="personal-hdr"><span>Código</span><span>Nombre</span><span>Acciones</span></div>';
+    if (vista.length === 0) {
+      html += '<div style="padding:1.25rem;text-align:center;color:var(--tx3);font-size:13px;">'
+        + (mostrarActivos ? 'No hay cosecheros activos' : 'No hay cosecheros inactivos') + '</div>';
     } else {
-      grupo.forEach(function(p) {
-        html += '<div class="personal-row' + (p.activo ? '' : ' inactivo') + '">'
+      vista.forEach(function(p) {
+        html += '<div class="personal-row">'
           + '<span style="font-weight:600;font-family:monospace;font-size:13px;">' + p.cod + '</span>'
           + '<span>' + p.nombre + '</span>'
-          + '<span><span class="status-dot ' + (p.activo ? 'dot-activo' : 'dot-inactivo') + '"></span>'
-          + (p.activo ? 'Activo' : 'Inactivo') + '</span>'
           + '<span><div class="personal-actions">'
           + '<button class="btn-sm btn-edit" onclick="editarPersonal(\'' + p.cod + '\')"><i class="ti ti-pencil"></i></button>'
           + '<button class="btn-sm ' + (p.activo ? 'btn-toggle-off' : 'btn-toggle-on') + '" onclick="toggleActivo(\'' + p.cod + '\')">'
-          + '<i class="ti ' + (p.activo ? 'ti-user-off' : 'ti-user-check') + '"></i> ' + (p.activo ? 'Inactivar' : 'Activar') + '</button>'
+          + '<i class="ti ' + (p.activo ? 'ti-user-off' : 'ti-user-check') + '"></i> '
+          + (p.activo ? 'Inactivar' : 'Activar') + '</button>'
           + '</div></span></div>';
       });
     }
