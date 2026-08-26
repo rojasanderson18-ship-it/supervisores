@@ -2360,6 +2360,7 @@ function toggleActivo(cod) {
   p.activo = nuevoEstado;
   guardarPersonalCache(personal);
   renderPersonal();
+  mostrarToast(nuevoEstado ? (p.nombre + ' activado') : (p.nombre + ' inactivado — movido a pestaña Inactivos'));
   // Sincronizar con Google Sheets
   if (GAS_URL && GAS_URL !== 'TU_URL_GAS_AQUI') {
     fetch(GAS_URL, {
